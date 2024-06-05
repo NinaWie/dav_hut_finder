@@ -1,4 +1,5 @@
 """Package installer."""
+
 import os
 from setuptools import setup
 from setuptools import find_packages
@@ -24,7 +25,8 @@ setup(
         "geopandas",
         "matplotlib",
         "beautifulsoup4",
-        "pyrosm"
+        "pyrosm",
+        "flask",
     ],
     classifiers=[
         "License :: OSI Approved :: MIT License",
@@ -33,5 +35,5 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     packages=find_packages("."),
-    python_requires=">=3.8"
+    python_requires=">=3.8",
 )
