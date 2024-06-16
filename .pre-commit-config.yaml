@@ -16,21 +16,11 @@ repos:
       - id: trailing-whitespace
       - id: fix-byte-order-marker
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.7
+    rev: v0.4.9
     hooks:
       - id: ruff
-        name: ruff
-        entry: ruff check backend --config ./pyproject.toml
-        args: [--fix]
-        language: system
-        types: [python]
-        exclude: ^(.ci/|.apt/|setup.py)
+        args: [ --fix ]
       - id: ruff-format
-        name: ruff-format
-        entry: ruff format backend --config ./pyproject.toml
-        language: system
-        types: [python]
-        exclude: ^(.ci/|.apt/)
   - repo: https://github.com/opensource-nepal/commitlint
     rev: v1
     hooks:
