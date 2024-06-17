@@ -15,7 +15,7 @@ pip install -e .
 
 ## Flask demo
 
-Simple flask demo already works, to test it, run 
+Simple flask demo already works, to test it, run
 ```
 cd backend
 python app.py
