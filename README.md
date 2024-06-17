@@ -13,6 +13,29 @@ cd backend
 pip install -e .
 ```
 
+or simply build with Docker
+
+```
+docker build -t public_transport_airbnb .
+```
+
+## Development
+
+* work on `develop` branch by default
+* use [conventional commit style for automatic semantic versioning and releases](https://engineering.deloitte.com.au/articles/semantic-versioning-with-conventional-commits) via CI
+* install [pre-commit](https://pre-commit.com/) hook: `pre-commit install` to force correctness before every commit
+
+### Docker
+
+```
+docker build -t public_transport_airbnb .
+docker compose up
+```
+
+Open your browser at `http://localhost:8989/`
+
+The compose file mounts the correct files so hot reloading works without re-building.
+
 ## Flask demo
 
 Simple flask demo already works, to test it, run
