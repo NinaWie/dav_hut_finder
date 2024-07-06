@@ -53,5 +53,5 @@ Open the index.html (folder `frontend`) in a browser and test by inputting latit
 ## Next steps
 
 * Find out how to efficiently download PT stations -> see [notebook](backend/airbnb_project.ipynb)
-* Find out how to download airbnb locations -> see [notebook](backend/airbnb_project.ipynb)
+* Compute distance of huts from closest PT station -> best with spatial join in [geopandas](https://geopandas.org/en/stable/gallery/spatial_joins.html). The huts are already available in geojson format in our [database](backend/data/huts_database.geojson) which can be loaded via `gpd.read_file(file_path, driver="GeoJSON")`.
 * Set up basic web app with map

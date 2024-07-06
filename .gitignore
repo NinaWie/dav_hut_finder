@@ -1,4 +1,8 @@
 .DS_Store
+*.keypair
+backend/data/raw/
+backend/outputs/
+hut_*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
