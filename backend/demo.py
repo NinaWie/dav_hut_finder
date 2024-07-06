@@ -15,17 +15,19 @@ if __name__ == "__main__":
     start_lat, start_lon = 48.1381528, 11.5762854
     # min 100 because munich is boooring and maximal 150 km
     min_distance = 100
-    max_distance = 150
+    max_distance = 120
+    min_altitude = 2000
 
     # filter huts
     filtered = filter_huts(
         huts,
-        min_altitude=1000,
+        min_altitude=min_altitude,
         start_lat=start_lat,
         start_lon=start_lon,
         max_distance=max_distance,
         min_distance=min_distance,
     )
+    print("number of huts after filtering", len(filtered))
 
     # check availability for the top 5
     top_5_rows = filtered.sort_values("distance").head()

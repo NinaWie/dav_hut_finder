@@ -112,3 +112,13 @@ class AvailabilityChecker:
 
     def get_rooms(self, soup):
         return soup.find_all("div", id=lambda x: x and x.startswith("room") and "Info" not in x)
+
+    @staticmethod
+    def availability_specific_date(all_avail, check_date):
+        # get only the relevant rows
+        result = all_avail[["hut_name", "room_type", check_date]].dropna()
+        # transform nr spaces to int
+        result[check_date] = result[check_date].apply(lambda x: int(x.split(" ")[0]))
+        # rename col
+        result = result.rename({check_date: "available_beds"}, axis=1)
+        return result.groupby("hut_name")["available_beds"].sum().to_dict()
