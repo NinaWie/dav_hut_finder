@@ -1,14 +1,19 @@
-# Public Transport Airbnb
+# Alpenverein hut finder
+
+Filter huts in the alps by
+* distance from starting location
+* Public transport accessibility
+* Available places at a specific date
 
 ## Installation:
 
 Download repo and install all dependencies into a conda environment with the following:
 
 ```
-git clone https://github.com/NinaWie/public_transport_airbnb
-cd public_transport_airbnb
-conda create -n airbnb_env
-conda activate airbnb_env
+git clone https://github.com/NinaWie/dav_hut_finder 
+cd dav_hut_finder 
+conda create -n dav_env
+conda activate dav_env
 cd backend
 pip install -e .
 ```
@@ -16,7 +21,7 @@ pip install -e .
 or simply build with Docker
 
 ```
-docker build -t public_transport_airbnb .
+docker build -t dav_hut_finder .
 ```
 
 ## Development
@@ -28,7 +33,7 @@ docker build -t public_transport_airbnb .
 ### Docker
 
 ```
-docker build -t public_transport_airbnb .
+docker build -t dav_hut_finder .
 docker compose up
 ```
 
