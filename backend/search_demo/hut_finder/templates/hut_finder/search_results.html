@@ -1,0 +1,8 @@
+Matches {{huts|length}} / {{ count }} huts in the directory.
+{% for hut in huts %}
+<div hx-target="this" hx-swap="outerHTML"></div>
+    <p class="name">{{ hut.name }}</p>
+    <p>{{ hut.description }}</p>
+</div>
+
+{% endfor %}
