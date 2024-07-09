@@ -2,6 +2,7 @@
 
 import os
 from flask import Flask, jsonify, request, send_from_directory, render_template
+from flask_cors import CORS
 import geopandas as gpd
 import numpy as np
 import datetime
@@ -11,7 +12,7 @@ from filtering import filter_huts
 from check_availability import AvailabilityChecker
 
 app = Flask(__name__)
-# CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (null)
+CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (null)
 
 
 def create_app():
