@@ -2,7 +2,6 @@
 
 import os
 from flask import Flask, jsonify, request, send_from_directory, render_template
-from flask_cors import CORS
 import geopandas as gpd
 import numpy as np
 import datetime
@@ -12,7 +11,12 @@ from filtering import filter_huts
 from check_availability import AvailabilityChecker
 
 app = Flask(__name__)
-CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (null)
+# CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (null)
+
+
+def create_app():
+    return app
+
 
 # if set to true, check on the fly whether the huts are available (might take a while)
 # if false, load precomputed availability table
@@ -113,4 +117,5 @@ def get_filtered_huts():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="localhost", port=8989)
+    app.run(host="0.0.0.0")
+    # app.run(debug=True, host="localhost", port=8989)
