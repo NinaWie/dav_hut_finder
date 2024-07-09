@@ -1,7 +1,7 @@
 """Serves public_transport_airbnb backend with flask."""
 
 import os
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, render_template
 from flask_cors import CORS
 import geopandas as gpd
 import numpy as np
@@ -24,17 +24,25 @@ def serve_index():
     return send_from_directory("../frontend", "index.html")
 
 
+def convert_to_float(request, col_name, default):
+    try:
+        return float(request.args.get(col_name, default))
+    except ValueError:
+        return default
+
+
 @app.route("/get_filtered_huts", methods=["GET"])
 def get_filtered_huts():
     """filter huts and get availability"""
+    print("start")
     # start lat and lon
-    start_lat = float(request.args.get("start_lat", np.nan))
-    start_lon = float(request.args.get("start_lon", np.nan))
+    start_lat = convert_to_float(request, "start_lat", np.nan)
+    start_lon = convert_to_float(request, "start_lon", np.nan)
     # filtering arguments
-    min_distance = float(request.args.get("min_distance", 0))
-    max_distance = float(request.args.get("max_distance", np.inf))
-    min_altitude = float(request.args.get("min_altitude", 0))
-    max_altitude = float(request.args.get("max_altitude", np.inf))
+    min_distance = convert_to_float(request, "min_distance", 0)
+    max_distance = convert_to_float(request, "max_distance", np.inf)
+    min_altitude = convert_to_float(request, "min_altitude", 0)
+    max_altitude = convert_to_float(request, "max_altitude", np.inf)
 
     # filter huts by distance from start etc
     filtered_huts = filter_huts(
@@ -84,7 +92,9 @@ def get_filtered_huts():
 
     else:
         # output dictionary with key=huts and values=distance from start location
-        return jsonify(filtered_huts.set_index("name")["distance"].to_dict())
+        return render_template(
+            "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
+        )
 
 
 if __name__ == "__main__":

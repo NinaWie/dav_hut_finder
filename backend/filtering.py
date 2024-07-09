@@ -1,6 +1,7 @@
 import numpy as np
 from haversine import haversine
 import geopandas as gpd
+import pandas as pd
 
 
 def filter_huts(
@@ -40,4 +41,6 @@ def filter_huts(
         ]
         if verbose:
             print(len(huts_filtered), "left after distance filtering (initially", len(huts))
+    else:
+        huts_filtered["distance"] = pd.NA
     return huts_filtered

@@ -1,11 +1,20 @@
-function demo_javascript_method() {
+const base_url = 'http://localhost:8989/get_filtered_huts'
+
+function call_filter_huts() {
     start_lat_input = document.getElementById("latitude").value
     start_lon_input = document.getElementById("longitude").value
-    const url = 'http://localhost:8989/compute_route?start_lat=' + start_lat_input + '&start_lon=' + start_lon_input
+    min_distance = document.getElementById("min_distance").value
+    max_distance = document.getElementById("max_distance").value
+    min_altitude = document.getElementById("min_altitude").value
+    max_altitude = document.getElementById("max_altitude").value
+    const url = base_url + '?start_lat='+ start_lat_input + '&start_lon=' + start_lon_input + "&min_distance=" + min_distance + "&max_distance=" + max_distance + "&min_altitude=" + min_altitude + "&max_altitude=" + max_altitude
     fetch(url)
-        .then(response => response.json())
-        .then(json => {
-            console.log(json);
-            document.getElementById("demo").innerHTML = JSON.stringify(json)
-        })
+    .then(response => response.text())
+    .then(html => {
+        console.log(html);
+        document.getElementById("demo").innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
 }
