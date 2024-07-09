@@ -7,7 +7,8 @@ function call_filter_huts() {
     max_distance = document.getElementById("max_distance").value
     min_altitude = document.getElementById("min_altitude").value
     max_altitude = document.getElementById("max_altitude").value
-    const url = base_url + '?start_lat='+ start_lat_input + '&start_lon=' + start_lon_input + "&min_distance=" + min_distance + "&max_distance=" + max_distance + "&min_altitude=" + min_altitude + "&max_altitude=" + max_altitude
+    date = document.getElementById("date").value
+    const url = base_url + '?start_lat='+ start_lat_input + '&start_lon=' + start_lon_input + "&min_distance=" + min_distance + "&max_distance=" + max_distance + "&min_altitude=" + min_altitude + "&max_altitude=" + max_altitude + "&date=" + date
     fetch(url)
     .then(response => response.text())
     .then(html => {
