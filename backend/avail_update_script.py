@@ -7,12 +7,13 @@ import geopandas as gpd
 from check_availability import AvailabilityChecker
 
 WEEKS_TO_PROCESS = 12  # checking availability for the next 12 weeks
+SAVE_EVERY = 5
 
 if __name__ == "__main__":
     not_in_system = []
 
     # load huts
-    huts = gpd.read_file(os.path.join("data", "huts_database.geojson"), index_col="id")
+    huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
 
     # load checker
     checker = AvailabilityChecker()
@@ -21,10 +22,10 @@ if __name__ == "__main__":
 
     tic = time.time()
     all_avail = []
-    for _, row in huts.iterrows():
+    for i, row in huts.iterrows():
         hut_name = row["name"]
         hut_id = row["id"]
-        print("Processing hut", id, hut_name)
+        print("Processing hut", i, hut_id, hut_name)
 
         out_df = checker(hut_id, start_date, biweeks_ahead=WEEKS_TO_PROCESS // 2)
         if len(out_df) > 0:
@@ -36,9 +37,10 @@ if __name__ == "__main__":
         # # uncomment to save hut results as separate files
         # out_df.to_csv(f"outputs_new/{hut_id}.csv")
         all_avail.append(out_df)
-    all_avail = pd.concat(all_avail)
-    all_avail.to_csv(os.path.join("data", "availability.csv"))
 
-    with open(os.path.join("data", "not_avail.json"), "w") as outfile:
-        json.dump(not_in_system, outfile)
+        if i % SAVE_EVERY == 0:
+            pd.concat(all_avail).to_csv(os.path.join("data", "availability.csv"))
+
+            with open(os.path.join("data", "not_avail.json"), "w") as outfile:
+                json.dump(not_in_system, outfile)
     print("finished!", time.time() - tic)
