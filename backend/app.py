@@ -2,10 +2,10 @@
 
 import os
 from flask import Flask, jsonify, request, send_from_directory, render_template
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import geopandas as gpd
 import numpy as np
-import datetime
+from datetime import datetime
 import pandas as pd
 
 from filtering import filter_huts
@@ -41,6 +41,17 @@ def serve_index():
 def serve_static_files(path):
     return send_from_directory(app.static_folder, path)
 
+@cross_origin()
+@app.route('/api/markers')
+def markers():
+    # Example markers data
+    markers_data = [
+        {"id": 1, "name": "Marker 1", "position": [46.5, 10.5]},
+        {"id": 2, "name": "Marker 2", "position": [45.8326, 6.8652]},
+        {"id": 3, "name": "Marker 3", "position": [45.9763, 7.6586]},
+        {"id": 4, "name": "Marker 4", "position": [47.4210, 10.9849]}
+    ]
+    return jsonify(markers_data)
 
 def convert_to_float(request, col_name, default):
     try:
@@ -56,32 +67,32 @@ def table_to_dict(table: pd.DataFrame):
     return [row.to_dict() for _, row in table.iterrows()]
 
 
-@app.route("/get_filtered_huts", methods=["GET"])
-def get_filtered_huts():
-    """filter huts and get availability"""
-    # start lat and lon
-    start_lat = convert_to_float(request, "start_lat", np.nan)
-    start_lon = convert_to_float(request, "start_lon", np.nan)
-    # filtering arguments
-    min_distance = convert_to_float(request, "min_distance", 0)
-    max_distance = convert_to_float(request, "max_distance", np.inf)
-    min_altitude = convert_to_float(request, "min_altitude", 0)
-    max_altitude = convert_to_float(request, "max_altitude", np.inf)
+@app.route('/api/submit', methods=['POST'])
+def submit():
+    print("hi submit")
+    data = request.json
 
+    # Convert strings to floats and date string to datetime object
+    processed_data = {
+        'start_lat': float(data['latitude']),
+        'start_lon': float(data['longitude']),
+        'min_distance': float(data['minDistance']),
+        'max_distance': float(data['maxDistance']),
+        'min_altitude': float(data['minAltitude']),
+        'max_altitude': float(data['maxAltitude']),
+        'date': datetime.strptime(data['date'], '%Y-%m-%d'),
+        'min_spaces': float(data.get("minSpaces", 1)),
+    }
+
+    """filter huts and get availability"""
     # filter huts by distance from start etc
     filtered_huts = filter_huts(
         huts,
-        start_lat=start_lat,
-        start_lon=start_lon,
-        max_distance=max_distance,
-        min_distance=min_distance,
-        min_altitude=min_altitude,
-        max_altitude=max_altitude,
+        **processed_data
     )
-
     # whether to check availability
-    check_date = str(request.args.get("date", None))
-    min_avail_spaces = int(request.args.get("min_avail_spaces", "0"))
+    check_date = processed_data["date"].strftime("%d.%m.%Y")
+    min_avail_spaces = processed_data["min_spaces"]
 
     # filter by availability
     if check_date not in ["None", ""]:
@@ -100,12 +111,14 @@ def get_filtered_huts():
                 )
                 availability.dropna(subset=["availability"], inplace=True)
                 availability["available_spaces"] = (availability["availability"].str.split(" ").str[0]).astype(int)
+                # sum up availability for all room types
+                availability = availability.groupby("id")["available_spaces"].sum().reset_index()
 
                 huts_with_availability = pd.merge(filtered_huts, availability, how="left", left_on="id", right_on="id")
                 huts_with_availability = huts_with_availability[
                     huts_with_availability["available_spaces"] > min_avail_spaces
                 ]
-                return jsonify(table_to_dict(huts_with_availability))
+                return jsonify({'status': 'success', 'markers': table_to_dict(huts_with_availability)})
 
             # load availability (cannot preload it because it is updated daily)
             availability = pd.read_csv(AVAIL_PATH)
@@ -144,10 +157,9 @@ def get_filtered_huts():
             return render_template(
                 "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
             )
-        else:
-            return jsonify(table_to_dict(filtered_huts))
-
+        else:            
+            return jsonify({'status': 'success', 'markers': table_to_dict(filtered_huts)})
 
 if __name__ == "__main__":
     # app.run(host="0.0.0.0")
-    app.run(debug=True, host="localhost", port=8989)
+    app.run(debug=True, host="localhost", port=5000)
