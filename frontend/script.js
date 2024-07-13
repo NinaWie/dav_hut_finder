@@ -1,4 +1,4 @@
-const base_url = 'http://localhost:8989/get_filtered_huts'
+const base_url = 'http://37.120.179.15:4000/get_filtered_huts'
 
 function call_filter_huts() {
     start_lat_input = document.getElementById("latitude").value

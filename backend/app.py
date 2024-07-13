@@ -11,7 +11,8 @@ import pandas as pd
 from filtering import filter_huts
 from check_availability import AvailabilityChecker
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="../frontend")
+
 CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (null)
 
 
@@ -31,8 +32,12 @@ huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
 
 @app.route("/")
 def serve_index():
-    """Serve index."""
-    return send_from_directory("../frontend", "index.html")
+    return send_from_directory(app.static_folder, "index.html")
+
+
+@app.route("/<path:path>")
+def serve_static_files(path):
+    return send_from_directory(app.static_folder, path)
 
 
 def convert_to_float(request, col_name, default):
@@ -103,7 +108,8 @@ def get_filtered_huts():
                         "coordinates",
                         "id",
                         "altitude_m",
-                    ]
+                    ],
+                    errors="ignore",
                 )
             )
 
@@ -118,5 +124,5 @@ def get_filtered_huts():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0")
-    # app.run(debug=True, host="localhost", port=8989)
+    # app.run(host="0.0.0.0")
+    app.run(debug=True, host="localhost", port=8989)
