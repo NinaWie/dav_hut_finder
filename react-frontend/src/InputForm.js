@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './InputForm.css';
 
 const InputForm = () => {
   const [formData, setFormData] = useState({
@@ -40,8 +41,8 @@ const InputForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div>
+    <form onSubmit={handleSubmit} className="input-form">
+      <div className="form-row">
         <label>
           Longitude:
           <input
@@ -53,8 +54,6 @@ const InputForm = () => {
             required
           />
         </label>
-      </div>
-      <div>
         <label>
           Latitude:
           <input
@@ -66,8 +65,6 @@ const InputForm = () => {
             required
           />
         </label>
-      </div>
-      <div>
         <label>
           Minimal Distance:
           <input
@@ -79,8 +76,6 @@ const InputForm = () => {
             required
           />
         </label>
-      </div>
-      <div>
         <label>
           Maximal Distance:
           <input
@@ -92,8 +87,6 @@ const InputForm = () => {
             required
           />
         </label>
-      </div>
-      <div>
         <label>
           Minimal Altitude:
           <input
@@ -105,8 +98,6 @@ const InputForm = () => {
             required
           />
         </label>
-      </div>
-      <div>
         <label>
           Maximal Altitude:
           <input
@@ -118,8 +109,6 @@ const InputForm = () => {
             required
           />
         </label>
-      </div>
-      <div>
         <label>
           Date:
           <input

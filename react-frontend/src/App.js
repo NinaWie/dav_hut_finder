@@ -6,7 +6,7 @@ import InputForm from './InputForm';
 function App() {
   return (
     <div className="App">
-      <h1>React Leaflet Map with Input Form</h1>
+      <h1>DAV Hütten Finder</h1>
       <InputForm />
       <MapComponent />
     </div>
