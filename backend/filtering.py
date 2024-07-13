@@ -40,6 +40,7 @@ def filter_huts(
         huts_filtered = huts_filtered[
             (huts_filtered["distance"] <= max_distance) & (huts_filtered["distance"] >= min_distance)
         ]
+        huts_filtered["distance"] = huts_filtered["distance"].astype(int)
         if verbose:
             print(len(huts_filtered), "left after distance filtering (initially", len(huts))
     else:

@@ -81,7 +81,7 @@ def submit():
         'min_altitude': float(data['minAltitude']),
         'max_altitude': float(data['maxAltitude']),
         'date': datetime.strptime(data['date'], '%Y-%m-%d'),
-        'min_spaces': float(data.get("min_spaces", 1)),
+        'min_spaces': float(data.get("minSpaces", 1)),
     }
 
     """filter huts and get availability"""
@@ -95,6 +95,7 @@ def submit():
     check_date = processed_data["date"].strftime("%d.%m.%Y")
     min_avail_spaces = processed_data["min_spaces"]
 
+    print("Date:", check_date)
     # filter by availability
     if check_date not in ["None", ""]:
 
