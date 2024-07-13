@@ -14,7 +14,8 @@ def filter_huts(
     max_altitude: int = np.inf,
     min_places: int = 0,
     max_places: int = np.inf,
-    verbose: bool = False,
+    verbose: bool = False, 
+    **kwargs
 ):
     def comp_haversine(row):
         """Computes beeline distance in km"""

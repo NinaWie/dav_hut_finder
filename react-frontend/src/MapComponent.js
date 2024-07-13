@@ -29,7 +29,7 @@ const MapComponent = ({ setCoordinates }) => {
   const [markers, setMarkers] = useState([]);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:5000/api/markers')
+    fetch('http://localhost:5000/api/markers')
       .then((response) => response.json())
       .then((data) => setMarkers(data))
       .catch((error) => console.error('Error fetching markers:', error));
