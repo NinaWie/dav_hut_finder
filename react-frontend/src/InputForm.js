@@ -43,84 +43,91 @@ const InputForm = () => {
   return (
     <form onSubmit={handleSubmit} className="input-form">
       <div className="form-row">
-        <label>
-          Longitude:
+        <div className="form-group">
+          <label>Longitude</label>
           <input
             type="number"
             step="any"
             name="longitude"
             value={formData.longitude}
             onChange={handleChange}
+            className="form-control"
             required
           />
-        </label>
-        <label>
-          Latitude:
+        </div>
+        <div className="form-group">
+          <label>Latitude</label>
           <input
             type="number"
             step="any"
             name="latitude"
             value={formData.latitude}
             onChange={handleChange}
+            className="form-control"
             required
           />
-        </label>
-        <label>
-          Minimal Distance:
+        </div>
+        <div className="form-group">
+          <label>Minimal Distance</label>
           <input
             type="number"
             step="any"
             name="minDistance"
             value={formData.minDistance}
             onChange={handleChange}
+            className="form-control"
             required
           />
-        </label>
-        <label>
-          Maximal Distance:
+        </div>
+        <div className="form-group">
+          <label>Maximal Distance</label>
           <input
             type="number"
             step="any"
             name="maxDistance"
             value={formData.maxDistance}
             onChange={handleChange}
+            className="form-control"
             required
           />
-        </label>
-        <label>
-          Minimal Altitude:
+        </div>
+        <div className="form-group">
+          <label>Minimal Altitude</label>
           <input
             type="number"
             step="any"
             name="minAltitude"
             value={formData.minAltitude}
             onChange={handleChange}
+            className="form-control"
             required
           />
-        </label>
-        <label>
-          Maximal Altitude:
+        </div>
+        <div className="form-group">
+          <label>Maximal Altitude</label>
           <input
             type="number"
             step="any"
             name="maxAltitude"
             value={formData.maxAltitude}
             onChange={handleChange}
+            className="form-control"
             required
           />
-        </label>
-        <label>
-          Date:
+        </div>
+        <div className="form-group">
+          <label>Date</label>
           <input
             type="date"
             name="date"
             value={formData.date}
             onChange={handleChange}
+            className="form-control"
             required
           />
-        </label>
+        </div>
       </div>
-      <button type="submit">Submit</button>
+      <button type="submit" className="btn btn-primary">Submit</button>
     </form>
   );
 };

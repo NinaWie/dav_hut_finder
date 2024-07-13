@@ -1,4 +1,6 @@
 import React from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
+
 import './App.css';
 import MapComponent from './MapComponent';
 import InputForm from './InputForm';
