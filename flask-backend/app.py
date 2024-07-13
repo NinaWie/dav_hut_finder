@@ -12,9 +12,9 @@ CORS(app)
 def get_data():
     data = {
         'message': 'Hello from Flask!',
-        'coordinates': [51.505, -0.09]
+        'coordinates': [51, 7]
     }
     return jsonify(data)
 
 if __name__ == '__main__':
-    app.run(debug=True, host="localhost", port=8989)
+    app.run(debug=True, host="localhost", port=5000)
