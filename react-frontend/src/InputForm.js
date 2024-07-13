@@ -10,7 +10,8 @@ const InputForm = ({ coordinates, setMarkers }) => {
     maxDistance: '1000',
     minAltitude: '0',
     maxAltitude: '3000',
-    date: '2024-07-31'
+    date: '2024-07-31',
+    minSpaces: '1'
   });
 
   useEffect(() => {
@@ -131,10 +132,16 @@ const InputForm = ({ coordinates, setMarkers }) => {
           name="date"
           value={formData.date}
           onChange={handleChange}
-          required
           InputLabelProps={{
             shrink: true,
           }}
+        />
+        <TextField
+          label="Minimal Spaces"
+          type="number"
+          name="minSpaces"
+          value={formData.minSpaces}
+          onChange={handleChange}
         />
       </Box>
       <Button type="submit" variant="contained" color="primary" style={{ marginTop: '10px' }}>
