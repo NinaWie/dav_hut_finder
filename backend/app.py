@@ -80,16 +80,9 @@ def submit():
         'max_distance': float(data['maxDistance']),
         'min_altitude': float(data['minAltitude']),
         'max_altitude': float(data['maxAltitude']),
-        'date': datetime.strptime(data['date'], '%Y-%m-%d')
+        'date': datetime.strptime(data['date'], '%Y-%m-%d'),
+        'min_spaces': float(data.get("min_spaces", 1)),
     }
-
-    # markers_data = [
-    #     {"id": 1, "name": "Marker 1", "position": [45, 10]},
-    #     {"id": 2, "name": "Marker 2", "position": [45, 6.86]},
-    #     {"id": 3, "name": "Marker 3", "position": [45.93, 7.65]},
-    #     {"id": 4, "name": "Marker 4", "position": [47.42, 10.99]}
-    # ]
-    # return jsonify({'status': 'success', 'markers':markers_data})
 
     """filter huts and get availability"""
     # filter huts by distance from start etc
@@ -100,10 +93,10 @@ def submit():
     print(filtered_huts)
     # whether to check availability
     check_date = processed_data["date"].strftime("%d.%m.%Y")
-    min_avail_spaces = int(request.args.get("min_avail_spaces", "0"))
+    min_avail_spaces = processed_data["min_spaces"]
 
     # filter by availability
-    if False: # check_date not in ["None", ""]:
+    if check_date not in ["None", ""]:
 
         if ONLINE_AVAIL_CHECK:
             print(f"Checking {len(filtered_huts)} huts for availability")
@@ -119,12 +112,14 @@ def submit():
                 )
                 availability.dropna(subset=["availability"], inplace=True)
                 availability["available_spaces"] = (availability["availability"].str.split(" ").str[0]).astype(int)
+                # sum up availability for all room types
+                availability = availability.groupby("id")["available_spaces"].sum().reset_index()
 
                 huts_with_availability = pd.merge(filtered_huts, availability, how="left", left_on="id", right_on="id")
                 huts_with_availability = huts_with_availability[
                     huts_with_availability["available_spaces"] > min_avail_spaces
                 ]
-                return jsonify(table_to_dict(huts_with_availability))
+                return jsonify({'status': 'success', 'markers': table_to_dict(huts_with_availability)})
 
             # load availability (cannot preload it because it is updated daily)
             availability = pd.read_csv(AVAIL_PATH)
@@ -159,14 +154,11 @@ def submit():
             return render_template("simple.html", tables=[result.to_html(classes="data")], titles=result.columns.values)
 
     else:
-        print(2)
         if DEBUG:
             return render_template(
                 "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
             )
-        else:
-            print("table to dict:", table_to_dict(filtered_huts))
-            
+        else:            
             return jsonify({'status': 'success', 'markers': table_to_dict(filtered_huts)})
 
 if __name__ == "__main__":
