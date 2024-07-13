@@ -21,6 +21,7 @@ repos:
       - id: ruff
         args: [ --fix ]
       - id: ruff-format
+    exclude: 'migrations/.*|.*/search_demo/.*'
   - repo: https://github.com/opensource-nepal/commitlint
     rev: v1
     hooks:
