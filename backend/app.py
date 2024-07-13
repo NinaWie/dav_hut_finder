@@ -25,6 +25,8 @@ def create_app():
 ONLINE_AVAIL_CHECK = False
 # if false, need to set path to availability file
 AVAIL_PATH = os.path.join("data", "availability.csv")
+# debug mode: directly return rendered html table
+DEBUG = False
 
 # load huts database
 huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
@@ -45,6 +47,13 @@ def convert_to_float(request, col_name, default):
         return float(request.args.get(col_name, default))
     except ValueError:
         return default
+
+
+def table_to_dict(table: pd.DataFrame):
+    if table.index.name is not None:
+        table.reset_index(inplace=True)
+    table.drop(["geometry"], axis=1, errors="ignore", inplace=True)
+    return [row.to_dict() for _, row in table.iterrows()]
 
 
 @app.route("/get_filtered_huts", methods=["GET"])
@@ -72,6 +81,8 @@ def get_filtered_huts():
 
     # whether to check availability
     check_date = str(request.args.get("date", None))
+    min_avail_spaces = int(request.args.get("min_avail_spaces", "0"))
+
     # filter by availability
     if check_date not in ["None", ""]:
 
@@ -82,6 +93,20 @@ def get_filtered_huts():
             result = checker.availability_specific_date(filtered_huts, check_date)
             checker.close()
         else:
+            if not DEBUG:
+                # load availability (cannot preload it because it is updated daily)
+                availability = (pd.read_csv(AVAIL_PATH)[["id", "room_type", check_date]]).rename(
+                    {check_date: "availability"}, axis=1
+                )
+                availability.dropna(subset=["availability"], inplace=True)
+                availability["available_spaces"] = (availability["availability"].str.split(" ").str[0]).astype(int)
+
+                huts_with_availability = pd.merge(filtered_huts, availability, how="left", left_on="id", right_on="id")
+                huts_with_availability = huts_with_availability[
+                    huts_with_availability["available_spaces"] > min_avail_spaces
+                ]
+                return jsonify(table_to_dict(huts_with_availability))
+
             # load availability (cannot preload it because it is updated daily)
             availability = pd.read_csv(AVAIL_PATH)
             # merge availability with filtered
@@ -112,15 +137,15 @@ def get_filtered_huts():
                     errors="ignore",
                 )
             )
-
-        # out put dictionary with key=huts and values=sum of available_beds
-        return render_template("simple.html", tables=[result.to_html(classes="data")], titles=result.columns.values)
+            return render_template("simple.html", tables=[result.to_html(classes="data")], titles=result.columns.values)
 
     else:
-        # output dictionary with key=huts and values=distance from start location
-        return render_template(
-            "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
-        )
+        if DEBUG:
+            return render_template(
+                "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
+            )
+        else:
+            return jsonify(table_to_dict(filtered_huts))
 
 
 if __name__ == "__main__":
