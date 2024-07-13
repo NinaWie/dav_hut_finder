@@ -13,6 +13,14 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// Custom icon for the clicked marker (image of a person)
+const personIcon = new L.Icon({
+  iconUrl: '/hiking.png', // Replace this with your image URL
+  iconSize: [38, 38], // size of the icon
+  iconAnchor: [19, 38], // point of the icon which will correspond to marker's location
+  popupAnchor: [0, -38], // point from which the popup should open relative to the iconAnchor
+});
+
 const ClickableMap = ({ setCoordinates, setMarkerPosition }) => {
   useMapEvents({
     click(e) {
@@ -46,7 +54,17 @@ const MapComponent = ({ setCoordinates, markers }) => {
           </Popup>
         </Marker>
       ))}
-      {markerPosition && <Marker position={markerPosition} />}
+      {markerPosition && (
+        <Marker position={markerPosition} icon={personIcon}>
+          <Popup>
+            <div>
+              <strong>Your selected location:</strong><br />
+              <strong>Latitude:</strong> {markerPosition.lat}<br />
+              <strong>Longitude:</strong> {markerPosition.lng}
+            </div>
+          </Popup>
+        </Marker>
+      )}
       <ClickableMap setCoordinates={setCoordinates} setMarkerPosition={setMarkerPosition} />
     </MapContainer>
   );
