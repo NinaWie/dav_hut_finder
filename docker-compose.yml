@@ -1,10 +1,11 @@
 services:
   dev:
-    image: public_transport_airbnb
-    command: python backend/app.py
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /home/maeuschen/backend
+    command: python app.py
     network_mode: host
     volumes:
       - ./backend:/home/maeuschen/backend
       - ./frontend:/home/maeuschen/frontend
-    ports:
-      - "8989:8989"

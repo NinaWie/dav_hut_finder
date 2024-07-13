@@ -10,4 +10,3 @@ COPY --chown=maeuschen:maeuschen . .
 
 RUN pip install --user --no-cache-dir e .
 ENV PATH="$HOME/.local/bin:${PATH}"
-CMD ["python", "backend/app.py"]
