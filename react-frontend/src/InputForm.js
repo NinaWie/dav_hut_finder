@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { TextField, Button, Box } from '@mui/material';
 import './InputForm.css';
 
-const InputForm = () => {
+const InputForm = ({ coordinates }) => {
   const [formData, setFormData] = useState({
     longitude: '',
     latitude: '',
@@ -11,6 +12,16 @@ const InputForm = () => {
     maxAltitude: '',
     date: ''
   });
+
+  useEffect(() => {
+    if (coordinates) {
+      setFormData((prevData) => ({
+        ...prevData,
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
+      }));
+    }
+  }, [coordinates]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -53,96 +64,80 @@ const InputForm = () => {
 
   return (
     <form onSubmit={handleSubmit} className="input-form">
-      <div className="form-row">
-        <div className="form-group">
-          <label>Longitude</label>
-          <input
-            type="number"
-            step="any"
-            name="longitude"
-            value={formData.longitude}
-            onChange={handleChange}
-            className="form-control"
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label>Latitude</label>
-          <input
-            type="number"
-            step="any"
-            name="latitude"
-            value={formData.latitude}
-            onChange={handleChange}
-            className="form-control"
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label>Minimal Distance</label>
-          <input
-            type="number"
-            step="any"
-            name="minDistance"
-            value={formData.minDistance}
-            onChange={handleChange}
-            className="form-control"
-            min="0"
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label>Maximal Distance</label>
-          <input
-            type="number"
-            step="any"
-            name="maxDistance"
-            value={formData.maxDistance}
-            onChange={handleChange}
-            className="form-control"
-            min="0"
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label>Minimal Altitude</label>
-          <input
-            type="number"
-            step="any"
-            name="minAltitude"
-            value={formData.minAltitude}
-            onChange={handleChange}
-            className="form-control"
-            min="0"
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label>Maximal Altitude</label>
-          <input
-            type="number"
-            step="any"
-            name="maxAltitude"
-            value={formData.maxAltitude}
-            onChange={handleChange}
-            className="form-control"
-            min="0"
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label>Date</label>
-          <input
-            type="date"
-            name="date"
-            value={formData.date}
-            onChange={handleChange}
-            className="form-control"
-            required
-          />
-        </div>
-      </div>
-      <button type="submit" className="btn btn-primary">Submit</button>
+      <Box display="flex" flexDirection="row" flexWrap="nowrap" gap={2}>
+        <TextField
+          label="Longitude"
+          type="number"
+          step="any"
+          name="longitude"
+          value={formData.longitude}
+          onChange={handleChange}
+          required
+        />
+        <TextField
+          label="Latitude"
+          type="number"
+          step="any"
+          name="latitude"
+          value={formData.latitude}
+          onChange={handleChange}
+          required
+        />
+        <TextField
+          label="Minimal Distance"
+          type="number"
+          step="any"
+          name="minDistance"
+          value={formData.minDistance}
+          onChange={handleChange}
+          required
+          inputProps={{ min: 0 }}
+        />
+        <TextField
+          label="Maximal Distance"
+          type="number"
+          step="any"
+          name="maxDistance"
+          value={formData.maxDistance}
+          onChange={handleChange}
+          required
+          inputProps={{ min: 0 }}
+        />
+        <TextField
+          label="Minimal Altitude"
+          type="number"
+          step="any"
+          name="minAltitude"
+          value={formData.minAltitude}
+          onChange={handleChange}
+          required
+          inputProps={{ min: 0 }}
+        />
+        <TextField
+          label="Maximal Altitude"
+          type="number"
+          step="any"
+          name="maxAltitude"
+          value={formData.maxAltitude}
+          onChange={handleChange}
+          required
+          inputProps={{ min: 0 }}
+        />
+        <TextField
+          label="Date"
+          type="date"
+          name="date"
+          value={formData.date}
+          onChange={handleChange}
+          required
+          InputLabelProps={{
+            shrink: true,
+          }}
+        />
+      </Box>
+      <Button type="submit" variant="contained" color="primary" style={{ marginTop: '10px' }}>
+        Submit
+      </Button>
     </form>
   );
 };
