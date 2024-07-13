@@ -10,20 +10,22 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import time
-import json
 
 BASE_URL = "https://www.alpsonline.org/reservation/calendar?hut_id="
 
 
 class AvailabilityChecker:
     def __init__(self, base_url: str = BASE_URL):
-        self.driver = webdriver.Chrome()
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        self.driver = webdriver.Chrome(options=chrome_options)
         self.time_to_sleep = 5
         self.base_url = base_url
 
-    def __call__(self, hut_id, start_date, biweeks_ahead: int = 1):
+    def __call__(self, hut_id: int, start_date, biweeks_ahead: int = 1):
         # set url to hut
         url = self.base_url + str(hut_id)
 
@@ -113,12 +115,32 @@ class AvailabilityChecker:
     def get_rooms(self, soup):
         return soup.find_all("div", id=lambda x: x and x.startswith("room") and "Info" not in x)
 
-    @staticmethod
-    def availability_specific_date(all_avail, check_date):
+    def availability_specific_date(self, filtered_huts, check_date):
+        """Runs availabiltiy check for a hut and returns the results for a single day"""
+        # convert date into datetime object
+        date_object = datetime.datetime.strptime(check_date, "%d.%m.%Y")
+
+        # iterate over filtered huts and run availability check
+        all_avail = []
+        # iterate over all filtered huts
+        for _, row in filtered_huts.iterrows():
+            hut_name = row["name"]
+            hut_id = row["id"]
+
+            out_df = self(hut_id, date_object)
+            if len(out_df) > 0:
+                out_df.index.name = "room_type"
+                out_df.reset_index(inplace=True)
+                out_df["hut_name"] = hut_name
+            # # uncomment to save hut results as separate files
+            # out_df.to_csv(f"outputs_new/{hut_id}.csv")
+            all_avail.append(out_df)
+        all_avail = pd.concat(all_avail)
+
         # get only the relevant rows
         result = all_avail[["hut_name", "room_type", check_date]].dropna()
         # transform nr spaces to int
         result[check_date] = result[check_date].apply(lambda x: int(x.split(" ")[0]))
         # rename col
         result = result.rename({check_date: "available_beds"}, axis=1)
-        return result.groupby("hut_name")["available_beds"].sum().to_dict()
+        return result

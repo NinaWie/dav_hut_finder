@@ -1,6 +1,7 @@
 import numpy as np
 from haversine import haversine
 import geopandas as gpd
+import pandas as pd
 
 
 def filter_huts(
@@ -13,7 +14,8 @@ def filter_huts(
     max_altitude: int = np.inf,
     min_places: int = 0,
     max_places: int = np.inf,
-    verbose: bool = False,
+    verbose: bool = False, 
+    **kwargs
 ):
     def comp_haversine(row):
         """Computes beeline distance in km"""
@@ -38,6 +40,9 @@ def filter_huts(
         huts_filtered = huts_filtered[
             (huts_filtered["distance"] <= max_distance) & (huts_filtered["distance"] >= min_distance)
         ]
+        huts_filtered["distance"] = huts_filtered["distance"].astype(int)
         if verbose:
             print(len(huts_filtered), "left after distance filtering (initially", len(huts))
+    else:
+        huts_filtered["distance"] = pd.NA
     return huts_filtered

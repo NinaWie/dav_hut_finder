@@ -22,7 +22,11 @@ dependencies = [
     "beautifulsoup4",
     "pyrosm",
     "flask",
-    "flask-cors"
+    "flask-cors",
+    "haversine",
+    "selenium",
+    "flask",
+    "flask_cors"
 ]
 
 [project.urls]
