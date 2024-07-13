@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -17,19 +18,21 @@ def markers():
 @app.route('/api/submit', methods=['POST'])
 def submit():
     data = request.json
-    print('Received data:', data)
+
+    # Convert strings to floats and date string to datetime object
+    processed_data = {
+        'longitude': float(data['longitude']),
+        'latitude': float(data['latitude']),
+        'min_distance': float(data['minDistance']),
+        'max_distance': float(data['maxDistance']),
+        'min_altitude': float(data['minAltitude']),
+        'max_altitude': float(data['maxAltitude']),
+        'date': datetime.strptime(data['date'], '%Y-%m-%d')
+    }
+
+    print('Received data:', processed_data)
     # Here, you can process the data as needed
-    return jsonify({'status': 'success', 'data': data})
-
-
-
-
-def convert_to_float(request, col_name, default):
-    try:
-        return float(request.args.get(col_name, default))
-    except ValueError:
-        return default
-
+    return jsonify({'status': 'success', 'data': processed_data})
 
 if __name__ == '__main__':
     app.run(debug=True)

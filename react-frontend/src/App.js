@@ -7,8 +7,8 @@ function App() {
   return (
     <div className="App">
       <h1>React Leaflet Map with Input Form</h1>
-      <MapComponent />
       <InputForm />
+      <MapComponent />
     </div>
   );
 }

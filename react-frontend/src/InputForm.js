@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 
 const InputForm = () => {
   const [formData, setFormData] = useState({
-    float1: '',
-    float2: '',
-    float3: '',
-    float4: '',
-    float5: '',
-    float6: '',
+    longitude: '',
+    latitude: '',
+    minDistance: '',
+    maxDistance: '',
+    minAltitude: '',
+    maxAltitude: '',
     date: ''
   });
 
@@ -41,21 +41,84 @@ const InputForm = () => {
 
   return (
     <form onSubmit={handleSubmit}>
-      {[1, 2, 3, 4, 5, 6].map((num) => (
-        <div key={num}>
-          <label>
-            Float {num}:
-            <input
-              type="number"
-              step="any"
-              name={`float${num}`}
-              value={formData[`float${num}`]}
-              onChange={handleChange}
-              required
-            />
-          </label>
-        </div>
-      ))}
+      <div>
+        <label>
+          Longitude:
+          <input
+            type="number"
+            step="any"
+            name="longitude"
+            value={formData.longitude}
+            onChange={handleChange}
+            required
+          />
+        </label>
+      </div>
+      <div>
+        <label>
+          Latitude:
+          <input
+            type="number"
+            step="any"
+            name="latitude"
+            value={formData.latitude}
+            onChange={handleChange}
+            required
+          />
+        </label>
+      </div>
+      <div>
+        <label>
+          Minimal Distance:
+          <input
+            type="number"
+            step="any"
+            name="minDistance"
+            value={formData.minDistance}
+            onChange={handleChange}
+            required
+          />
+        </label>
+      </div>
+      <div>
+        <label>
+          Maximal Distance:
+          <input
+            type="number"
+            step="any"
+            name="maxDistance"
+            value={formData.maxDistance}
+            onChange={handleChange}
+            required
+          />
+        </label>
+      </div>
+      <div>
+        <label>
+          Minimal Altitude:
+          <input
+            type="number"
+            step="any"
+            name="minAltitude"
+            value={formData.minAltitude}
+            onChange={handleChange}
+            required
+          />
+        </label>
+      </div>
+      <div>
+        <label>
+          Maximal Altitude:
+          <input
+            type="number"
+            step="any"
+            name="maxAltitude"
+            value={formData.maxAltitude}
+            onChange={handleChange}
+            required
+          />
+        </label>
+      </div>
       <div>
         <label>
           Date:
