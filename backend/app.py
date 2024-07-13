@@ -90,12 +90,10 @@ def submit():
         huts,
         **processed_data
     )
-    print(filtered_huts)
     # whether to check availability
     check_date = processed_data["date"].strftime("%d.%m.%Y")
     min_avail_spaces = processed_data["min_spaces"]
 
-    print("Date:", check_date)
     # filter by availability
     if check_date not in ["None", ""]:
 
