@@ -24,7 +24,9 @@ dependencies = [
     "flask",
     "flask-cors",
     "haversine",
-    "selenium"
+    "selenium",
+    "falsk",
+    "falsk_cors"
 ]
 
 [project.urls]
