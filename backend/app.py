@@ -11,7 +11,7 @@ import pandas as pd
 from filtering import filter_huts
 from check_availability import AvailabilityChecker
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="../frontend")
 
 CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (null)
 
