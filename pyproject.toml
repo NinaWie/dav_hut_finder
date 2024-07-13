@@ -20,6 +20,7 @@ dependencies = [
     "geopandas",
     "matplotlib",
     "beautifulsoup4",
+    "requests",
     "pyrosm",
     "flask",
     "flask-cors",
