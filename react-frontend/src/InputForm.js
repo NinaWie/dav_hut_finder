@@ -23,6 +23,17 @@ const InputForm = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Ensure all positive number fields are positive
+    if (
+      parseFloat(formData.minDistance) < 0 ||
+      parseFloat(formData.maxDistance) < 0 ||
+      parseFloat(formData.minAltitude) < 0 ||
+      parseFloat(formData.maxAltitude) < 0
+    ) {
+      alert('Distance and altitude values must be positive numbers.');
+      return;
+    }
+
     // Send data to the Flask backend
     fetch('http://127.0.0.1:5000/api/submit', {
       method: 'POST',
@@ -76,6 +87,7 @@ const InputForm = () => {
             value={formData.minDistance}
             onChange={handleChange}
             className="form-control"
+            min="0"
             required
           />
         </div>
@@ -88,6 +100,7 @@ const InputForm = () => {
             value={formData.maxDistance}
             onChange={handleChange}
             className="form-control"
+            min="0"
             required
           />
         </div>
@@ -100,6 +113,7 @@ const InputForm = () => {
             value={formData.minAltitude}
             onChange={handleChange}
             className="form-control"
+            min="0"
             required
           />
         </div>
@@ -112,6 +126,7 @@ const InputForm = () => {
             value={formData.maxAltitude}
             onChange={handleChange}
             className="form-control"
+            min="0"
             required
           />
         </div>
