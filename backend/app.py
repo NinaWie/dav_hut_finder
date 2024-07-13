@@ -83,6 +83,14 @@ def submit():
         'date': datetime.strptime(data['date'], '%Y-%m-%d')
     }
 
+    # markers_data = [
+    #     {"id": 1, "name": "Marker 1", "position": [45, 10]},
+    #     {"id": 2, "name": "Marker 2", "position": [45, 6.86]},
+    #     {"id": 3, "name": "Marker 3", "position": [45.93, 7.65]},
+    #     {"id": 4, "name": "Marker 4", "position": [47.42, 10.99]}
+    # ]
+    # return jsonify({'status': 'success', 'markers':markers_data})
+
     """filter huts and get availability"""
     # filter huts by distance from start etc
     filtered_huts = filter_huts(
@@ -158,8 +166,8 @@ def submit():
             )
         else:
             print("table to dict:", table_to_dict(filtered_huts))
-            return jsonify(table_to_dict(filtered_huts))
-
+            
+            return jsonify({'status': 'success', 'markers': table_to_dict(filtered_huts)})
 
 if __name__ == "__main__":
     # app.run(host="0.0.0.0")

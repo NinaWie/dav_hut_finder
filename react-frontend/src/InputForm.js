@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { TextField, Button, Box } from '@mui/material';
 import './InputForm.css';
 
-const InputForm = ({ coordinates }) => {
+const InputForm = ({ coordinates, setMarkers }) => {
   const [formData, setFormData] = useState({
     longitude: '',
     latitude: '',
-    minDistance: '',
-    maxDistance: '',
-    minAltitude: '',
-    maxAltitude: '',
-    date: ''
+    minDistance: '0',
+    maxDistance: '1000',
+    minAltitude: '0',
+    maxAltitude: '3000',
+    date: '2024-07-31'
   });
 
   useEffect(() => {
@@ -46,7 +46,7 @@ const InputForm = ({ coordinates }) => {
     }
 
     // Send data to the Flask backend
-    fetch('http://localhost:5000/api/submit', {
+    fetch('http://127.0.0.1:5000/api/submit', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -55,7 +55,9 @@ const InputForm = ({ coordinates }) => {
     })
       .then((response) => response.json())
       .then((data) => {
-        console.log('Success:', data);
+        if (data.status === 'success') {
+          setMarkers(data.markers);
+        }
       })
       .catch((error) => {
         console.error('Error:', error);
