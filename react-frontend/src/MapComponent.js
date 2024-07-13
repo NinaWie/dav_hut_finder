@@ -13,7 +13,7 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 const MapComponent = () => {
-  const [coordinates, setCoordinates] = useState([51.505, -0.09]);
+  const [coordinates, setCoordinates] = useState([46.5, 10.5]);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -26,7 +26,7 @@ const MapComponent = () => {
   }, []);
 
   return (
-    <MapContainer center={coordinates} zoom={13} style={{ height: '100vh', width: '100%' }}>
+    <MapContainer center={coordinates} zoom={7} style={{ height: '100vh', width: '100%' }}>
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
