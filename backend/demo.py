@@ -1,11 +1,13 @@
-"""This file is for demonstration purposes and will be removed (or replaced by a proper test class)"""
+"""This file is for demonstration purposes and will be removed (or replaced by a proper test class)."""
 
 import datetime
 import os
-import pandas as pd
+
 import geopandas as gpd
-from filtering import filter_huts
+import pandas as pd
+
 from check_availability import AvailabilityChecker
+from filtering import filter_huts
 
 if __name__ == "__main__":
     huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))

@@ -7,10 +7,11 @@ from typing import Dict, Text
 
 import geopandas as gpd
 import pandas as pd
-from check_availability import AvailabilityChecker
-from filtering import filter_huts
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS, cross_origin
+
+from check_availability import AvailabilityChecker
+from filtering import filter_huts
 
 app = Flask(__name__, static_folder="../frontend")
 

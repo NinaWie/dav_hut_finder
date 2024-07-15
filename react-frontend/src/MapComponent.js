@@ -44,7 +44,7 @@ const MapComponent = ({ setCoordinates, markers }) => {
       {markers.map((marker) => (
         <Marker key={marker.id} position={[marker.latitude, marker.longitude]}>
           <Popup>
-            Hütte: {marker.name} 
+            Hütte: {marker.name}
             <br />
             Höhe: {marker.altitude}
             <br />

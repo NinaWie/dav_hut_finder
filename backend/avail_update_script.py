@@ -1,9 +1,13 @@
-import time
-import os
-import json
+"""Script to update availiabilty.csv file from .geojson file."""
+
 import datetime
-import pandas as pd
+import json
+import os
+import time
+
 import geopandas as gpd
+import pandas as pd
+
 from check_availability import AvailabilityChecker
 
 WEEKS_TO_PROCESS = 12  # checking availability for the next 12 weeks
