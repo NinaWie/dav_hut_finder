@@ -1,7 +1,7 @@
 [project]
-name = "airbnbpt"
+name = "hutfinder"
 version = "0.0.1"
-description = "Public Transport filtering for Airbnb"
+description = "Filter and search huts for availability in the Alps"
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [
@@ -11,23 +11,21 @@ license = {file = "LICENSE"}
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Science/Research",
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python",
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 
 dependencies = [
-    "numpy",
-    "geopandas",
-    "matplotlib",
-    "beautifulsoup4",
-    "requests",
-    "pyrosm",
-    "flask",
-    "flask-cors",
-    "haversine",
-    "selenium",
-    "flask",
-    "flask_cors"
+    "numpy==2.0.0",
+    "geopandas==1.0.1",
+    "matplotlib==3.9.1",
+    "beautifulsoup4==4.12.3",
+    "requests==2.32.3",
+    "pyrosm==0.6.2",
+    "flask==3.0.3",
+    "flask-cors==4.0.1",
+    "haversine==2.8.1",
+    "selenium==4.22.0",
 ]
 
 [project.urls]
