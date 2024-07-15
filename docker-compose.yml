@@ -1,11 +1,16 @@
 services:
-  dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  backend:
+    build: ./backend
     working_dir: /home/maeuschen/backend
     command: python app.py
     network_mode: host
     volumes:
       - ./backend:/home/maeuschen/backend
-      - ./frontend:/home/maeuschen/frontend
+    environment:
+      - NODE_ENV=development
+  frontend:
+    build: ./react-frontend
+    command: npm start
+    network_mode: host
+    environment:
+      - NODE_ENV=development
