@@ -2,16 +2,18 @@ services:
   backend:
     build: ./backend
     working_dir: /home/maeuschen/backend
-    network_mode: host
     volumes:
       - ./backend:/home/maeuschen/backend
-    command: flask --app app.py --debug run
+    ports:
+      - 5000:5000
+    command: flask --app app.py --debug run --host=0.0.0.0
   frontend:
     build: ./react-frontend
     working_dir: /home/maeuschen/frontend
-    network_mode: host
     volumes:
       - ./react-frontend:/home/maeuschen/frontend
       - /home/maeuschen/frontend/node_modules
+    ports:
+      - 3000:3000
     command: npm start 
 
