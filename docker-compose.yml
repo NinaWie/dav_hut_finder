@@ -2,15 +2,16 @@ services:
   backend:
     build: ./backend
     working_dir: /home/maeuschen/backend
-    command: python app.py
     network_mode: host
     volumes:
       - ./backend:/home/maeuschen/backend
-    environment:
-      - NODE_ENV=development
+    command: flask --app app.py --debug run
   frontend:
     build: ./react-frontend
-    command: npm start
+    working_dir: /home/maeuschen/frontend
     network_mode: host
-    environment:
-      - NODE_ENV=development
+    volumes:
+      - ./react-frontend:/home/maeuschen/frontend
+      - /home/maeuschen/frontend/node_modules
+    command: npm start 
+

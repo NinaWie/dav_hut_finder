@@ -1,10 +1,10 @@
-FROM node:14
+FROM node:20-alpine
 
-WORKDIR /app
+ENV HOME=/home/maeuschen
 
-COPY package.json package.json
-COPY package-lock.json package-lock.json
+RUN addgroup -S 1000 && adduser -S maeuschen -G 1000
 
-RUN npm install
-
+USER maeuschen
+WORKDIR $HOME/frontend
 COPY . .
+RUN npm install
