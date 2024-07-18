@@ -1,32 +1,47 @@
-import numpy as np
+"""Scrapes alpsonline.org for availability."""
+
+import datetime
+import time
+from collections import defaultdict
+from typing import List, Text
+
+import geopandas as gpd
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
-from collections import defaultdict
-import datetime
+from bs4.element import ResultSet
 from selenium import webdriver
-from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-from bs4 import BeautifulSoup
-import time
+from selenium.webdriver.support.ui import WebDriverWait
 
 BASE_URL = "https://www.alpsonline.org/reservation/calendar?hut_id="
 
 
 class AvailabilityChecker:
-    def __init__(self, base_url: str = BASE_URL):
+    """AvailabilityChecker handles scraping alpsonline.org and parsing results into Pandas DataFrames."""
+
+    def __init__(self, base_url: Text = BASE_URL) -> None:
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         self.driver = webdriver.Chrome(options=chrome_options)
         self.time_to_sleep = 5
         self.base_url = base_url
 
-    def __call__(self, hut_id: int, start_date, biweeks_ahead: int = 1):
-        # set url to hut
+    def __call__(self, hut_id: int, start_date: datetime.date, biweeks_ahead: int = 1) -> pd.DataFrame:
+        """
+        Callable function of AvailabilityChecker that performs scraping.
+
+        Args:
+            hut_id: hut id that is used to check BASE_URL + hut_id
+            start_date: start date of query
+            biweeks_ahead: how many weeks to look ahead
+
+        Returns:
+            pd.DataFrame containing availability info
+        """
         url = self.base_url + str(hut_id)
 
         # check if hut is in booking system
@@ -62,8 +77,16 @@ class AvailabilityChecker:
         date_range_result = pd.concat(date_range_result).swapaxes(1, 0)
         return date_range_result
 
-    def check_reservation_possible(self, url):
-        """Check if the hut is even part of the reservation system"""
+    def check_reservation_possible(self, url: Text) -> bool:
+        """
+        Check if the hut is even part of the reservation system.
+
+        Args:
+            url: url to check
+
+        Returns:
+            True if reservation possible, False if not
+        """
         response = requests.get(url)
         if response.status_code != 200:
             return False
@@ -76,9 +99,19 @@ class AvailabilityChecker:
             return True
 
     def close(self):
+        """Close chrome diver connection."""
         self.driver.quit()
 
-    def get_soup_for_date(self, input_date):
+    def get_soup_for_date(self, input_date: datetime.time) -> BeautifulSoup:
+        """
+        Create BeautifulSoup object for HTML with date entered.
+
+        Args:
+            input_date: date to enter in input fields
+
+        Returns:
+            soup: BeautifulSoup
+        """
         # print("running soup for input date", input_date)
         wait = WebDriverWait(self.driver, 10)
         date_input = wait.until(EC.visibility_of_element_located((By.ID, "fromDate")))
@@ -95,7 +128,20 @@ class AvailabilityChecker:
         room_id = room.get("id")
         return int(room_id.split("-")[0][4:])
 
-    def extract_rooms_from_soup(self, rooms, date_list, skip_dates):
+    def extract_rooms_from_soup(
+        self, rooms: ResultSet, date_list: List[datetime.time], skip_dates: List[int]
+    ) -> pd.DataFrame:
+        """
+        Extract available rooms from bf4.element.ResultSet.
+
+        Args:
+            rooms: List containing results from BeautifulSoup scrape
+            date_list: List of dates to consider
+            skip_dates: List of dates to skip
+
+        Returns:
+            date_cat: pd.DataFrame containing available rooms
+        """
         day_list = defaultdict(dict)
         cat = "reservation_possible"
         for i in range(len(rooms)):
@@ -112,11 +158,29 @@ class AvailabilityChecker:
 
         return date_cat
 
-    def get_rooms(self, soup):
+    def get_rooms(self, soup: BeautifulSoup) -> ResultSet:
+        """
+        Extract room information from BeautifulSoup Object.
+
+        Args:
+            soup: BeautifulSoup object containing html data
+        Returns:
+            bs4.element.ResultSet (actually list) containing rooms information
+        """
+
         return soup.find_all("div", id=lambda x: x and x.startswith("room") and "Info" not in x)
 
-    def availability_specific_date(self, filtered_huts, check_date):
-        """Runs availabiltiy check for a hut and returns the results for a single day"""
+    def availability_specific_date(self, filtered_huts: gpd.GeoDataFrame, check_date: Text) -> pd.DataFrame:
+        """
+        Runs availabiltiy check for a hut and returns the results for a single day.
+
+        Args:
+            filtered_huts: GeoDataFrame containing results of hut filtering
+            check_date: date to check
+
+        Returns:
+            result: pd.DataFrame encoding availability
+        """
         # convert date into datetime object
         date_object = datetime.datetime.strptime(check_date, "%d.%m.%Y")
 

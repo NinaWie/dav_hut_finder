@@ -1,10 +1,22 @@
 services:
-  dev:
-    image: public_transport_airbnb
-    command: python backend/app.py
-    network_mode: host
+  backend:
+    build: ./backend
+    working_dir: /home/maeuschen/backend
     volumes:
       - ./backend:/home/maeuschen/backend
-      - ./frontend:/home/maeuschen/frontend
     ports:
-      - "8989:8989"
+      - 5000:5000
+    command: flask --app app.py --debug run --host=0.0.0.0
+  frontend:
+    build: ./react-frontend
+    working_dir: /home/maeuschen/frontend
+    volumes:
+      - ./react-frontend:/home/maeuschen/frontend
+      - /home/maeuschen/frontend/node_modules
+    ports:
+      - 3000:3000
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+    command: npm start 
+
