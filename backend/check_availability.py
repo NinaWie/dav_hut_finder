@@ -16,6 +16,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 
 BASE_URL = "https://www.alpsonline.org/reservation/calendar?hut_id="
 
@@ -113,12 +114,22 @@ class AvailabilityChecker:
             soup: BeautifulSoup
         """
         # print("running soup for input date", input_date)
-        wait = WebDriverWait(self.driver, 10)
+        wait = WebDriverWait(self.driver, 7)
         date_input = wait.until(EC.visibility_of_element_located((By.ID, "fromDate")))
+        initial_text = self.driver.find_element(By.ID, "bookingDate0").text
+
+        # Clear the date field and input new date
         date_input.clear()
         date_input.send_keys(input_date)
         date_input.send_keys(Keys.RETURN)
-        time.sleep(self.time_to_sleep)
+        # time.sleep(self.time_to_sleep)
+
+        # Wait until the text changes, indicating that new data has loaded
+        try:
+            wait.until(lambda driver: driver.find_element(By.ID, "bookingDate0").text != initial_text)
+        except TimeoutException:
+            print("Warning: Timed out waiting for text to change")
+
         # convert to soup
         html_content = self.driver.page_source
         soup = BeautifulSoup(html_content)
