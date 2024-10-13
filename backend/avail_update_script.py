@@ -33,7 +33,12 @@ if __name__ == "__main__":
         hut_id = row["id"]
         print("Processing hut", i, hut_id, hut_name)
 
-        out_df = checker(hut_id, start_date, biweeks_ahead=max([1, WEEKS_TO_PROCESS // 2]))
+        # skip huts where some error occurs in the processing
+        try:
+            out_df = checker(hut_id, start_date, biweeks_ahead=max([1, WEEKS_TO_PROCESS // 2]))
+        except Exception as e:
+            print(f"Error processing hut {hut_id}: {e}")
+            continue
         if len(out_df) > 0:
             out_df.index.name = "room_type"
             out_df.reset_index(inplace=True)
