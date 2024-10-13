@@ -1,5 +1,6 @@
 """Scrapes alpsonline.org for availability."""
 
+import os
 import datetime
 import time
 from collections import defaultdict
@@ -12,6 +13,7 @@ from bs4 import BeautifulSoup
 from bs4.element import ResultSet
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
@@ -20,6 +22,11 @@ from selenium.common.exceptions import TimeoutException
 
 BASE_URL = "https://www.alpsonline.org/reservation/calendar?hut_id="
 
+if os.path.exists("/usr/local/bin/chromedriver"):
+    SERVICE = Service("/usr/local/bin/chromedriver")
+else:
+    SERVICE = None
+
 
 class AvailabilityChecker:
     """AvailabilityChecker handles scraping alpsonline.org and parsing results into Pandas DataFrames."""
@@ -27,7 +34,10 @@ class AvailabilityChecker:
     def __init__(self, base_url: Text = BASE_URL) -> None:
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
-        self.driver = webdriver.Chrome(options=chrome_options)
+        chrome_options.add_argument("--no-sandbox")  # Required for some Linux environments
+        chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+        chrome_options.add_argument("--remote-debugging-port=9222")  # Set a port for remote debugging
+        self.driver = webdriver.Chrome(service=SERVICE, options=chrome_options)
         self.time_to_sleep = 5
         self.base_url = base_url
 
