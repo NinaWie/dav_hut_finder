@@ -2,31 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { TextField, Button, Box } from '@mui/material';
 import './InputForm.css';
 
-const InputForm = ({ coordinates, setMarkers }) => {
-  const [formData, setFormData] = useState({
-    longitude: '',
-    latitude: '',
-    minDistance: '0',
-    maxDistance: '1000',
-    minAltitude: '0',
-    maxAltitude: '3000',
-    date: '2024-07-31',
-    minSpaces: '1'
-  });
+const InputForm = ({ formData, setFormData, onSubmit }) => {
+  const [localFormData, setLocalFormData] = useState(formData);
 
   useEffect(() => {
-    if (coordinates) {
-      setFormData((prevData) => ({
-        ...prevData,
-        latitude: coordinates.lat,
-        longitude: coordinates.lng,
-      }));
-    }
-  }, [coordinates]);
+    setLocalFormData(formData);  // Sync local state with global form data
+  }, [formData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({
+    setLocalFormData((prevData) => ({
       ...prevData,
       [name]: value
     }));
@@ -34,35 +19,8 @@ const InputForm = ({ coordinates, setMarkers }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    // Ensure all positive number fields are positive
-    if (
-      parseFloat(formData.minDistance) < 0 ||
-      parseFloat(formData.maxDistance) < 0 ||
-      parseFloat(formData.minAltitude) < 0 ||
-      parseFloat(formData.maxAltitude) < 0
-    ) {
-      alert('Distance and altitude values must be positive numbers.');
-      return;
-    }
-
-    // Send data to the Flask backend
-    fetch('http://127.0.0.1:5555/api/submit', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(formData)
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.status === 'success') {
-          setMarkers(data.markers);
-        }
-      })
-      .catch((error) => {
-        console.error('Error:', error);
-      });
+    // Submit the local form data to App.js
+    onSubmit(localFormData);
   };
 
   return (
@@ -73,7 +31,7 @@ const InputForm = ({ coordinates, setMarkers }) => {
           type="number"
           step="any"
           name="longitude"
-          value={formData.longitude}
+          value={localFormData.longitude}
           onChange={handleChange}
           required
         />
@@ -82,7 +40,7 @@ const InputForm = ({ coordinates, setMarkers }) => {
           type="number"
           step="any"
           name="latitude"
-          value={formData.latitude}
+          value={localFormData.latitude}
           onChange={handleChange}
           required
         />
@@ -91,7 +49,7 @@ const InputForm = ({ coordinates, setMarkers }) => {
           type="number"
           step="any"
           name="minDistance"
-          value={formData.minDistance}
+          value={localFormData.minDistance}
           onChange={handleChange}
           required
           inputProps={{ min: 0 }}
@@ -101,7 +59,7 @@ const InputForm = ({ coordinates, setMarkers }) => {
           type="number"
           step="any"
           name="maxDistance"
-          value={formData.maxDistance}
+          value={localFormData.maxDistance}
           onChange={handleChange}
           required
           inputProps={{ min: 0 }}
@@ -111,7 +69,7 @@ const InputForm = ({ coordinates, setMarkers }) => {
           type="number"
           step="any"
           name="minAltitude"
-          value={formData.minAltitude}
+          value={localFormData.minAltitude}
           onChange={handleChange}
           required
           inputProps={{ min: 0 }}
@@ -121,7 +79,7 @@ const InputForm = ({ coordinates, setMarkers }) => {
           type="number"
           step="any"
           name="maxAltitude"
-          value={formData.maxAltitude}
+          value={localFormData.maxAltitude}
           onChange={handleChange}
           required
           inputProps={{ min: 0 }}
@@ -130,7 +88,7 @@ const InputForm = ({ coordinates, setMarkers }) => {
           label="Date"
           type="date"
           name="date"
-          value={formData.date}
+          value={localFormData.date}
           onChange={handleChange}
           InputLabelProps={{
             shrink: true,
@@ -140,7 +98,7 @@ const InputForm = ({ coordinates, setMarkers }) => {
           label="Minimal Spaces"
           type="number"
           name="minSpaces"
-          value={formData.minSpaces}
+          value={localFormData.minSpaces}
           onChange={handleChange}
         />
       </Box>

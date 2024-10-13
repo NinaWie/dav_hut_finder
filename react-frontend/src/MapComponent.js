@@ -13,26 +13,25 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Custom icon for the clicked marker (image of a person)
+// Custom icon for the clicked marker (personIcon)
 const personIcon = new L.Icon({
-  iconUrl: '/hiking.png', // Replace this with your image URL
-  iconSize: [38, 38], // size of the icon
-  iconAnchor: [19, 38], // point of the icon which will correspond to marker's location
-  popupAnchor: [0, -38], // point from which the popup should open relative to the iconAnchor
+  iconUrl: '/hiking.png',  // Replace with your image URL or static file path
+  iconSize: [38, 38],  // Size of the icon
+  iconAnchor: [19, 38],  // Point of the icon which will correspond to marker's location
+  popupAnchor: [0, -38],  // Point from which the popup should open relative to the iconAnchor
 });
 
-const ClickableMap = ({ setCoordinates, setMarkerPosition }) => {
+const ClickableMap = ({ handleMapClick }) => {
   useMapEvents({
     click(e) {
-      setCoordinates(e.latlng);
-      setMarkerPosition(e.latlng);
+      handleMapClick(e.latlng);  // Trigger marker update on click
     },
   });
 
   return null;
 };
 
-const MapComponent = ({ setCoordinates, markers }) => {
+const MapComponent = ({ markers, handleMapClick }) => {
   const [markerPosition, setMarkerPosition] = useState(null);
 
   return (
@@ -41,12 +40,14 @@ const MapComponent = ({ setCoordinates, markers }) => {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
+
+      {/* Render markers from the fetched data */}
       {markers.map((marker) => (
         <Marker key={marker.id} position={[marker.latitude, marker.longitude]}>
           <Popup>
             Hütte: {marker.name}
             <br />
-            Höhe: {marker.altitude}
+            Höhe: {marker.altitude} meters
             <br />
             Entfernung: {marker.distance} km
             <br />
@@ -54,6 +55,8 @@ const MapComponent = ({ setCoordinates, markers }) => {
           </Popup>
         </Marker>
       ))}
+
+      {/* Render the personIcon at the clicked position */}
       {markerPosition && (
         <Marker position={markerPosition} icon={personIcon}>
           <Popup>
@@ -65,7 +68,14 @@ const MapComponent = ({ setCoordinates, markers }) => {
           </Popup>
         </Marker>
       )}
-      <ClickableMap setCoordinates={setCoordinates} setMarkerPosition={setMarkerPosition} />
+
+      {/* Update marker position and handle click event */}
+      <ClickableMap
+        handleMapClick={(latlng) => {
+          setMarkerPosition(latlng);  // Set the position of the clicked marker
+          handleMapClick(latlng);  // Trigger marker update for coordinates
+        }}
+      />
     </MapContainer>
   );
 };
