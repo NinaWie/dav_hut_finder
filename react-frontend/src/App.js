@@ -9,7 +9,7 @@ function App() {
 
   useEffect(() => {
     // Fetch initial markers
-    fetch('http://127.0.0.1:5000/api/markers')
+    fetch('/api/markers')
       .then((response) => response.json())
       .then((data) => {
         if (data.status === 'success') {

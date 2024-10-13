@@ -1,0 +1,4 @@
+hutfinder.de, hutfinder.localhost:80 {
+    reverse_proxy /api/* prod_backend:5000
+    reverse_proxy prod:3000
+}

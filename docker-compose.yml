@@ -1,5 +1,32 @@
 services:
-  backend:
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+  dev_backend:
+    build: ./backend
+    working_dir: /home/maeuschen/backend
+    volumes:
+      - ./backend:/home/maeuschen/backend
+    command: flask --app app.py --debug run --host=0.0.0.0
+  dev:
+    build: ./react-frontend
+    depends_on:
+      - dev_backend
+      - caddy
+    working_dir: /home/maeuschen/frontend
+    volumes:
+      - ./react-frontend:/home/maeuschen/frontend
+      - /home/maeuschen/frontend/node_modules
+    command: npm start
+  prod_backend:
     build: ./backend
     working_dir: /home/maeuschen/backend
     volumes:
@@ -7,16 +34,19 @@ services:
     ports:
       - 5000:5000
     command: flask --app app.py --debug run --host=0.0.0.0
-  frontend:
+  prod:
     build: ./react-frontend
+    env_file: .env.production
+    depends_on:
+      - prod_backend
+      - caddy
     working_dir: /home/maeuschen/frontend
     volumes:
       - ./react-frontend:/home/maeuschen/frontend
       - /home/maeuschen/frontend/node_modules
-    ports:
-      - 3000:3000
-    environment:
-      - HOST=0.0.0.0
-      - PORT=3000
-    command: npm start 
+    command: npm start
 
+
+volumes:
+  caddy_data:
+  caddy_config:
