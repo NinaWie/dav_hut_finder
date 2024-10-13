@@ -5,7 +5,7 @@ services:
     volumes:
       - ./backend:/home/maeuschen/backend
     ports:
-      - 5000:5000
+      - 5555:5000
     command: flask --app app.py --debug run --host=0.0.0.0
   frontend:
     build: ./react-frontend
