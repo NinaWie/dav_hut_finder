@@ -17,7 +17,7 @@ def filter_huts(
     min_places: int = 0,
     max_places: int = np.inf,
     verbose: bool = False,
-    **kwargs,
+    **kwargs: dict,
 ) -> gpd.GeoDataFrame:
     """
     Filter huts by user input.

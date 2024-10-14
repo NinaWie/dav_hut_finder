@@ -3,14 +3,13 @@
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Text
+from typing import Any, Dict, Text
 
 import geopandas as gpd
 import pandas as pd
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS, cross_origin
 
-from check_availability import AvailabilityChecker
 from filtering import filter_huts
 
 app = Flask(__name__, static_folder="../frontend")
@@ -72,8 +71,16 @@ def convert_to_float(request: request, col_name: Text, default: float) -> float:
         return default
 
 
-def availability_as_html(availability, filtered_huts):
-    """SIMPLE HTML VERSION WITHOUT FRONTEND - deprecated"""
+def availability_as_html(availability: pd.DataFrame, filtered_huts: pd.DataFrame) -> Any:
+    """
+    Return availability as HTML table (deprecated).
+
+    Args:
+        availability (pd.DataFrame): availability dataframe
+        filtered_huts (pd.DataFrame): filtered huts dataframe
+    Returns:
+        HTML table
+    """
     # merge availability with filtered
     all_huts_with_availability = pd.merge(filtered_huts, availability, how="left", left_on="id", right_on="id")
     # remove unattended operation
