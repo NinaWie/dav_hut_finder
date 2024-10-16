@@ -22,6 +22,9 @@ services:
       - dev_backend
       - caddy
     working_dir: /home/maeuschen/frontend
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
     volumes:
       - ./react-frontend:/home/maeuschen/frontend
       - /home/maeuschen/frontend/node_modules
