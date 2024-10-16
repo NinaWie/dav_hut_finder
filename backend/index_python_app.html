@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        .data {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data th, .data td {
+            border: 1px solid black;
+            padding: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <input type="text" id="latitude" name="fname" placeholder="type latitude here"><br><br>
+    <input type="text" id="longitude" name="fname" placeholder="type longitude here"><br><br>
+    <input type="text" id="min_distance" name="fname" placeholder="how far away minimally"><br><br>
+    <input type="text" id="max_distance" name="fname" placeholder="how far away maximally"><br><br>
+    <input type="text" id="min_altitude" name="fname" placeholder="minimal altitude"><br><br>
+    <input type="text" id="max_altitude" name="fname" placeholder="maximal altitude"><br><br>
+    <input type="text" id="date" name="fname" placeholder="DD.MM.YYYY"><br><br>
+    <button onclick="call_filter_huts()">Show huts!</button>
+    <label id="demo"></label>
+    <script src="script_python_app.js"></script>
+</body>
+
+<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+
+</html>

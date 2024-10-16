@@ -2,6 +2,7 @@
 *.keypair
 backend/data/raw/
 backend/outputs/
+old_data/
 hut_*
 !hut_finder
 
