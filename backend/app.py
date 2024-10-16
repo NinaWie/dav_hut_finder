@@ -12,7 +12,7 @@ from flask_cors import CORS, cross_origin
 
 from filtering import filter_huts
 
-app = Flask(__name__, static_folder="../frontend")
+app = Flask(__name__, static_folder="static")
 
 CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (null)
 
