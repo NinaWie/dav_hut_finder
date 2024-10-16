@@ -18,7 +18,7 @@ services:
       - ./backend:/home/maeuschen/backend
     command: flask --debug run
   dev:
-    build: ./react-frontend
+    build: ./frontend
     depends_on:
       - dev_backend
       - caddy
@@ -27,7 +27,7 @@ services:
       - HOST=0.0.0.0
       - PORT=3000
     volumes:
-      - ./react-frontend:/home/maeuschen/frontend
+      - ./frontend:/home/maeuschen/frontend
       - frontend_node_modules:/home/maeuschen/frontend/node_modules
     command: npm start
   prod_backend:
@@ -38,14 +38,14 @@ services:
       - ./backend:/home/maeuschen/backend
     command: flask --debug run
   prod:
-    build: ./react-frontend
+    build: ./frontend
     env_file: .env.production
     depends_on:
       - prod_backend
       - caddy
     working_dir: /home/maeuschen/frontend
     volumes:
-      - ./react-frontend:/home/maeuschen/frontend
+      - ./frontend:/home/maeuschen/frontend
       - frontend_node_modules:/home/maeuschen/frontend/node_modules
     command: npm start
 
