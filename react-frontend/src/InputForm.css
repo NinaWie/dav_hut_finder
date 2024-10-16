@@ -4,11 +4,11 @@
     align-items: flex-start;
     padding: 20px;
   }
-  
+
   .MuiTextField-root {
     min-width: 150px;
   }
-  
+
   .form-row {
     display: flex;
     flex-direction: row;
@@ -18,22 +18,21 @@
     width: 100%;
     overflow-x: auto;
   }
-  
+
   .form-group {
     display: flex;
     flex-direction: column;
     min-width: 150px;
   }
-  
+
   label {
     margin-bottom: 5px;
   }
-  
+
   input {
     width: 100%;
   }
-  
+
   button {
     margin-top: 10px;
   }
-  

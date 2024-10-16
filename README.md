@@ -10,8 +10,8 @@ Filter huts in the alps by
 Download repo and install all dependencies into a conda environment with the following:
 
 ```
-git clone https://github.com/NinaWie/dav_hut_finder 
-cd dav_hut_finder 
+git clone https://github.com/NinaWie/dav_hut_finder
+cd dav_hut_finder
 conda create -n dav_env
 conda activate dav_env
 cd backend
@@ -33,7 +33,6 @@ docker build -t dav_hut_finder .
 ### Docker
 
 ```
-docker build -t dav_hut_finder .
 docker compose up
 ```
 
