@@ -1,9 +1,9 @@
 """Scrapes alpsonline.org for availability."""
 
 import datetime
-import time
+import os
 from collections import defaultdict
-from typing import List, Text
+from typing import Any, List, Text
 
 import geopandas as gpd
 import pandas as pd
@@ -11,14 +11,18 @@ import requests
 from bs4 import BeautifulSoup
 from bs4.element import ResultSet
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException
 
 BASE_URL = "https://www.alpsonline.org/reservation/calendar?hut_id="
+CHROMEDRIVER_PATH = "/usr/local/bin/chromedriver"
+
+SERVICE = Service(CHROMEDRIVER_PATH) if os.path.exists(CHROMEDRIVER_PATH) else None
 
 
 class AvailabilityChecker:
@@ -27,7 +31,10 @@ class AvailabilityChecker:
     def __init__(self, base_url: Text = BASE_URL) -> None:
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
-        self.driver = webdriver.Chrome(options=chrome_options)
+        chrome_options.add_argument("--no-sandbox")  # Required for some Linux environments
+        chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+        chrome_options.add_argument("--remote-debugging-port=9222")  # Set a port for remote debugging
+        self.driver = webdriver.Chrome(service=SERVICE, options=chrome_options)
         self.time_to_sleep = 5
         self.base_url = base_url
 
@@ -86,7 +93,7 @@ class AvailabilityChecker:
             url: url to check
 
         Returns:
-            True if reservation possible, False if not
+            bool: True if reservation possible, False if not
         """
         response = requests.get(url)
         if response.status_code != 200:
@@ -94,10 +101,7 @@ class AvailabilityChecker:
         html_content = response.text
         soup = BeautifulSoup(html_content, "html.parser")  # , "lxml")
         rooms = soup.find_all("div", id=lambda x: x and x.startswith("room"))
-        if len(rooms) < 2:
-            return False
-        else:
-            return True
+        return len(rooms) >= 2
 
     def close(self):
         """Close chrome diver connection."""
@@ -135,7 +139,16 @@ class AvailabilityChecker:
         soup = BeautifulSoup(html_content)
         return soup
 
-    def day_id_from_room(self, room):
+    def day_id_from_room(self, room: Any) -> int:
+        """
+        Extract day ID from room soup result.
+
+        Args:
+            room (bs Result): beautiful soup result for one room
+
+        Returns:
+            int: ID of the day
+        """
         room_id = room.get("id")
         return int(room_id.split("-")[0][4:])
 

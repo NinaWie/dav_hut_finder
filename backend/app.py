@@ -3,14 +3,13 @@
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Text
+from typing import Any, Dict, Text
 
 import geopandas as gpd
 import pandas as pd
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS, cross_origin
 
-from check_availability import AvailabilityChecker
 from filtering import filter_huts
 
 app = Flask(__name__, static_folder="../frontend")
@@ -72,6 +71,47 @@ def convert_to_float(request: request, col_name: Text, default: float) -> float:
         return default
 
 
+def availability_as_html(availability: pd.DataFrame, filtered_huts: pd.DataFrame) -> Any:
+    """
+    Return availability as HTML table (deprecated).
+
+    Args:
+        availability (pd.DataFrame): availability dataframe
+        filtered_huts (pd.DataFrame): filtered huts dataframe
+    Returns:
+        HTML table
+    """
+    # merge availability with filtered
+    all_huts_with_availability = pd.merge(filtered_huts, availability, how="left", left_on="id", right_on="id")
+    # remove unattended operation
+    all_huts_with_availability = all_huts_with_availability[
+        all_huts_with_availability["room_type"] != "Unattended operation"
+    ]
+    # remove unnecessary columns and format
+    result = (
+        all_huts_with_availability.set_index(["name", "altitude", "verein", "distance", "room_type"])
+        .swapaxes(1, 0)
+        .drop(
+            [
+                "latitude",
+                "longitude",
+                "geometry",
+                "Unnamed: 0",
+                "sektion",
+                "name_original",
+                "hut_warden",
+                "phone",
+                "total_places",
+                "coordinates",
+                "id",
+                "altitude_m",
+            ],
+            errors="ignore",
+        )
+    )
+    return render_template("simple.html", tables=[result.to_html(classes="data")], titles=result.columns.values)
+
+
 def table_to_dict(table: pd.DataFrame) -> [Dict]:
     """
     Converts pandas dataframe to list of dicts.
@@ -112,69 +152,36 @@ def submit():
     min_avail_spaces = processed_data["min_spaces"]
 
     # filter by availability
-    if check_date not in ["None", ""]:
-        if ONLINE_AVAIL_CHECK:
-            print(f"Checking {len(filtered_huts)} huts for availability")
-            # initialize checker and scrape availability for all huts
-            checker = AvailabilityChecker()
-            result = checker.availability_specific_date(filtered_huts, check_date)
-            checker.close()
-        else:
-            if not DEBUG:
-                # load availability (cannot preload it because it is updated daily)
-                availability = (pd.read_csv(AVAIL_PATH)[["id", "room_type", check_date]]).rename(
-                    {check_date: "availability"}, axis=1
-                )
-                availability.dropna(subset=["availability"], inplace=True)
-                availability["available_spaces"] = (availability["availability"].str.split(" ").str[0]).astype(int)
-                # sum up availability for all room types
-                availability = availability.groupby("id")["available_spaces"].sum().reset_index()
+    if check_date not in ["None", ""] and os.path.exists(AVAIL_PATH):
+        # load availability (cannot preload it because it is updated daily)
+        availability = pd.read_csv(AVAIL_PATH)
 
-                huts_with_availability = pd.merge(filtered_huts, availability, how="left", left_on="id", right_on="id")
-                huts_with_availability = huts_with_availability[
-                    huts_with_availability["available_spaces"] > min_avail_spaces
-                ]
-                return jsonify({"status": "success", "markers": table_to_dict(huts_with_availability)})
+        if DEBUG:
+            return availability_as_html(availability, filtered_huts)
 
-            # load availability (cannot preload it because it is updated daily)
-            availability = pd.read_csv(AVAIL_PATH)
-            # merge availability with filtered
-            all_huts_with_availability = pd.merge(filtered_huts, availability, how="left", left_on="id", right_on="id")
-            # remove unattended operation
-            all_huts_with_availability = all_huts_with_availability[
-                all_huts_with_availability["room_type"] != "Unattended operation"
-            ]
-            # remove unnecessary columns and format
-            result = (
-                all_huts_with_availability.set_index(["name", "altitude", "verein", "distance", "room_type"])
-                .swapaxes(1, 0)
-                .drop(
-                    [
-                        "latitude",
-                        "longitude",
-                        "geometry",
-                        "Unnamed: 0",
-                        "sektion",
-                        "name_original",
-                        "hut_warden",
-                        "phone",
-                        "total_places",
-                        "coordinates",
-                        "id",
-                        "altitude_m",
-                    ],
-                    errors="ignore",
-                )
-            )
-            return render_template("simple.html", tables=[result.to_html(classes="data")], titles=result.columns.values)
+        if check_date not in availability.columns:
+            return jsonify({"status": "error", "message": "Date not available"})
 
+        # check availability with date
+        availability = (pd.read_csv(AVAIL_PATH)[["id", "room_type", check_date]]).rename(
+            {check_date: "availability"}, axis=1
+        )
+        availability.dropna(subset=["availability"], inplace=True)
+        availability["available_spaces"] = (availability["availability"].str.split(" ").str[0]).astype(int)
+        # sum up availability for all room types
+        availability = availability.groupby("id")["available_spaces"].sum().reset_index()
+
+        huts_with_availability = pd.merge(filtered_huts, availability, how="left", left_on="id", right_on="id")
+        huts_with_availability = huts_with_availability[huts_with_availability["available_spaces"] > min_avail_spaces]
+        return jsonify({"status": "success", "markers": table_to_dict(huts_with_availability)})
+
+    # just return filtered huts without availability check
     else:
         if DEBUG:
             return render_template(
                 "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
             )
-        else:
-            return jsonify({"status": "success", "markers": table_to_dict(filtered_huts)})
+        return jsonify({"status": "success", "markers": table_to_dict(filtered_huts)})
 
 
 if __name__ == "__main__":
