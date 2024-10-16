@@ -10,10 +10,10 @@ function App() {
   const [markers, setMarkers] = useState([]);
   const [openWelcomeDialog, setOpenWelcomeDialog] = useState(true);  // Control for dialog state
   const [formData, setFormData] = useState({
-    longitude: '',
-    latitude: '',
+    longitude: '10.72265625',
+    latitude: '47.170598236405986',
     minDistance: '0',
-    maxDistance: '1000',
+    maxDistance: '100',
     minAltitude: '0',
     maxAltitude: '3000',
     date: "2024-09-08",//new Date().toISOString().split('T')[0],  // Default to today's date
@@ -69,7 +69,7 @@ function App() {
 
   return (
     <div className="App">
-      <h1>DAV Hütten Finder</h1>
+      <h1>Hut Finder</h1>
       <div className="content">
         {/* Pass current form data and markers */}
         <InputForm coordinates={coordinates} formData={formData} setFormData={setFormData} onSubmit={handleFormSubmit} />

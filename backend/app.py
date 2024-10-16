@@ -12,7 +12,7 @@ from flask_cors import CORS, cross_origin
 
 from filtering import filter_huts
 
-app = Flask(__name__, static_folder="../frontend")
+app = Flask(__name__, static_folder="static")
 
 CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (null)
 
@@ -31,7 +31,7 @@ huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
 @app.route("/")
 def serve_index():
     """Serve index page."""
-    return send_from_directory(app.static_folder, "index.html")
+    return send_from_directory(app.static_folder, "index_python_app.html")
 
 
 @app.route("/<path:path>")
@@ -134,22 +134,22 @@ def submit():
     data = request.json
 
     # Convert strings to floats and date string to datetime object
-    processed_data = {
+    filter_attributes = {
         "start_lat": float(data["latitude"]),
         "start_lon": float(data["longitude"]),
         "min_distance": float(data["minDistance"]),
         "max_distance": float(data["maxDistance"]),
         "min_altitude": float(data["minAltitude"]),
         "max_altitude": float(data["maxAltitude"]),
-        "date": datetime.strptime(data["date"], "%Y-%m-%d"),
-        "min_spaces": float(data.get("minSpaces", 1)),
     }
 
     # filter huts by distance from start etc
-    filtered_huts = filter_huts(huts, **processed_data)
-    # whether to check availability
-    check_date = processed_data["date"].strftime("%d.%m.%Y")
-    min_avail_spaces = processed_data["min_spaces"]
+    filtered_huts = filter_huts(huts, **filter_attributes)
+
+    # get inputs for checking date availability (need to convert to datetime and back for correct format)
+    check_data_datetime = datetime.strptime(data["date"], "%Y-%m-%d")
+    check_date = check_data_datetime.strftime("%d.%m.%Y")
+    min_avail_spaces = float(data.get("minSpaces", 1))
 
     # filter by availability
     if check_date not in ["None", ""] and os.path.exists(AVAIL_PATH):

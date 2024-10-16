@@ -32,7 +32,11 @@ const ClickableMap = ({ handleMapClick }) => {
 };
 
 const MapComponent = ({ markers, handleMapClick }) => {
-  const [markerPosition, setMarkerPosition] = useState(null);
+  // Set default position for the personIcon on map load
+  const [markerPosition, setMarkerPosition] = useState({
+    lat: 47.170598236405986,
+    lng: 10.72265625,
+  });
 
   return (
     <MapContainer center={[46.5, 10.5]} zoom={8} style={{ height: '100vh', width: '100%' }}>
