@@ -7,4 +7,4 @@ RUN addgroup -S 1000 && adduser -S maeuschen -G 1000
 USER maeuschen
 WORKDIR $HOME/frontend
 COPY . .
-RUN npm install
+RUN npm install --save

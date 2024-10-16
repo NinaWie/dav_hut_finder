@@ -12,10 +12,13 @@ services:
     working_dir: /home/maeuschen/frontend
     volumes:
       - ./react-frontend:/home/maeuschen/frontend
-      - /home/maeuschen/frontend/node_modules
+      - frontend_node_modules:/home/maeuschen/frontend/node_modules
     ports:
       - 3000:3000
     environment:
       - HOST=0.0.0.0
       - PORT=3000
     command: npm start
+
+volumes:
+  frontend_node_modules:
