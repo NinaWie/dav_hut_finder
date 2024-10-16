@@ -1,9 +1,9 @@
 """Scrapes alpsonline.org for availability."""
 
 import datetime
-import time
+import os
 from collections import defaultdict
-from typing import List, Text
+from typing import Any, List, Text
 
 import geopandas as gpd
 import pandas as pd
@@ -11,13 +11,18 @@ import requests
 from bs4 import BeautifulSoup
 from bs4.element import ResultSet
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 BASE_URL = "https://www.alpsonline.org/reservation/calendar?hut_id="
+CHROMEDRIVER_PATH = "/usr/local/bin/chromedriver"
+
+SERVICE = Service(CHROMEDRIVER_PATH) if os.path.exists(CHROMEDRIVER_PATH) else None
 
 
 class AvailabilityChecker:
@@ -26,7 +31,10 @@ class AvailabilityChecker:
     def __init__(self, base_url: Text = BASE_URL) -> None:
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
-        self.driver = webdriver.Chrome(options=chrome_options)
+        chrome_options.add_argument("--no-sandbox")  # Required for some Linux environments
+        chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+        chrome_options.add_argument("--remote-debugging-port=9222")  # Set a port for remote debugging
+        self.driver = webdriver.Chrome(service=SERVICE, options=chrome_options)
         self.time_to_sleep = 5
         self.base_url = base_url
 
@@ -60,7 +68,7 @@ class AvailabilityChecker:
             input_date = date.strftime("%d.%m.%Y")
             soup = self.get_soup_for_date(input_date)  # date_input from driver
             # get rooms
-            rooms = self.get_rooms(soup)
+            rooms = self.find_room_in_soup(soup)
 
             # get skip dates
             booking_closed = soup.find_all("div", id=lambda x: x and "bookingClosed" in x)
@@ -69,7 +77,7 @@ class AvailabilityChecker:
             # make list of 14 dates (14 max)
             date_list = [date + datetime.timedelta(days=i) for i in range(14)]
 
-            date_cat = self.extract_rooms_from_soup(rooms, date_list, skip_dates)
+            date_cat = self.get_spaces_per_room(rooms, date_list, skip_dates)
 
             date_range_result.append(date_cat)
 
@@ -85,7 +93,7 @@ class AvailabilityChecker:
             url: url to check
 
         Returns:
-            True if reservation possible, False if not
+            bool: True if reservation possible, False if not
         """
         response = requests.get(url)
         if response.status_code != 200:
@@ -93,10 +101,7 @@ class AvailabilityChecker:
         html_content = response.text
         soup = BeautifulSoup(html_content, "html.parser")  # , "lxml")
         rooms = soup.find_all("div", id=lambda x: x and x.startswith("room"))
-        if len(rooms) < 2:
-            return False
-        else:
-            return True
+        return len(rooms) >= 2
 
     def close(self):
         """Close chrome diver connection."""
@@ -113,22 +118,41 @@ class AvailabilityChecker:
             soup: BeautifulSoup
         """
         # print("running soup for input date", input_date)
-        wait = WebDriverWait(self.driver, 10)
+        wait = WebDriverWait(self.driver, 7)
         date_input = wait.until(EC.visibility_of_element_located((By.ID, "fromDate")))
+        initial_text = self.driver.find_element(By.ID, "bookingDate0").text
+
+        # Clear the date field and input new date
         date_input.clear()
         date_input.send_keys(input_date)
         date_input.send_keys(Keys.RETURN)
-        time.sleep(self.time_to_sleep)
+        # time.sleep(self.time_to_sleep)
+
+        # Wait until the text changes, indicating that new data has loaded
+        try:
+            wait.until(lambda driver: driver.find_element(By.ID, "bookingDate0").text != initial_text)
+        except TimeoutException:
+            print("Warning: Timed out waiting for text to change")
+
         # convert to soup
         html_content = self.driver.page_source
         soup = BeautifulSoup(html_content)
         return soup
 
-    def day_id_from_room(self, room):
+    def day_id_from_room(self, room: Any) -> int:
+        """
+        Extract day ID from room soup result.
+
+        Args:
+            room (bs Result): beautiful soup result for one room
+
+        Returns:
+            int: ID of the day
+        """
         room_id = room.get("id")
         return int(room_id.split("-")[0][4:])
 
-    def extract_rooms_from_soup(
+    def get_spaces_per_room(
         self, rooms: ResultSet, date_list: List[datetime.time], skip_dates: List[int]
     ) -> pd.DataFrame:
         """
@@ -144,8 +168,7 @@ class AvailabilityChecker:
         """
         day_list = defaultdict(dict)
         cat = "reservation_possible"
-        for i in range(len(rooms)):
-            room = rooms[i]
+        for room in rooms:
             day = self.day_id_from_room(room)
             day_str = date_list[day].strftime("%d.%m.%Y")
             if day in skip_dates:
@@ -158,7 +181,7 @@ class AvailabilityChecker:
 
         return date_cat
 
-    def get_rooms(self, soup: BeautifulSoup) -> ResultSet:
+    def find_room_in_soup(self, soup: BeautifulSoup) -> ResultSet:
         """
         Extract room information from BeautifulSoup Object.
 
@@ -167,7 +190,6 @@ class AvailabilityChecker:
         Returns:
             bs4.element.ResultSet (actually list) containing rooms information
         """
-
         return soup.find_all("div", id=lambda x: x and x.startswith("room") and "Info" not in x)
 
     def availability_specific_date(self, filtered_huts: gpd.GeoDataFrame, check_date: Text) -> pd.DataFrame:
