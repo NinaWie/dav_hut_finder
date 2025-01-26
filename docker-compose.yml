@@ -7,13 +7,13 @@ services:
       - 80:80
       - 443:443
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${CADDYFILE}:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
   dev_backend:
     image: hutfinder/dev_backend
     build: ./backend
-    env_file: .env.development
+    env_file: .env
     working_dir: /home/maeuschen/backend
     volumes:
       - ./backend:/home/maeuschen/backend
@@ -21,13 +21,11 @@ services:
   dev:
     image: hutfinder/dev
     build: ./frontend
+    env_file: .env
     depends_on:
       - dev_backend
       - caddy
     working_dir: /home/maeuschen/frontend
-    environment:
-      - HOST=0.0.0.0
-      - PORT=3000
     volumes:
       - ./frontend:/home/maeuschen/frontend
       - frontend_node_modules:/home/maeuschen/frontend/node_modules
@@ -35,15 +33,15 @@ services:
   prod_backend:
     image: hutfinder/prod_backend
     build: ./backend
-    env_file: .env.production
+    env_file: .env
     working_dir: /home/maeuschen/backend
     volumes:
       - ./backend:/home/maeuschen/backend
-    command: waitress-serve --port=5555 --host=0.0.0.0 app:create_app
+    command: waitress-serve --host=0.0.0.0 --port=5000 app:app
   prod:
     image: hutfinder/prod
     build: ./frontend
-    env_file: .env.production
+    env_file: .env
     depends_on:
       - prod_backend
       - caddy
@@ -51,7 +49,7 @@ services:
     volumes:
       - ./frontend:/home/maeuschen/frontend
       - frontend_node_modules:/home/maeuschen/frontend/node_modules
-    command: npm start
+    command: npm start prod
 
 volumes:
   caddy_data:
