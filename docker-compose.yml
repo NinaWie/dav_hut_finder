@@ -11,6 +11,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
   dev_backend:
+    image: hutfinder/dev_backend
     build: ./backend
     env_file: .env.development
     working_dir: /home/maeuschen/backend
@@ -18,6 +19,7 @@ services:
       - ./backend:/home/maeuschen/backend
     command: flask --debug run
   dev:
+    image: hutfinder/dev
     build: ./frontend
     depends_on:
       - dev_backend
@@ -31,6 +33,7 @@ services:
       - frontend_node_modules:/home/maeuschen/frontend/node_modules
     command: npm start
   prod_backend:
+    image: hutfinder/prod_backend
     build: ./backend
     env_file: .env.production
     working_dir: /home/maeuschen/backend
@@ -38,6 +41,7 @@ services:
       - ./backend:/home/maeuschen/backend
     command: flask --debug run
   prod:
+    image: hutfinder/prod
     build: ./frontend
     env_file: .env.production
     depends_on:
