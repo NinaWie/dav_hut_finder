@@ -39,7 +39,7 @@ services:
     working_dir: /home/maeuschen/backend
     volumes:
       - ./backend:/home/maeuschen/backend
-    command: flask --debug run
+    command: waitress-serve --port=5555 --host=0.0.0.0 app:create_app
   prod:
     image: hutfinder/prod
     build: ./frontend
