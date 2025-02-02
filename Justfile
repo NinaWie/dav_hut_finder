@@ -1,17 +1,10 @@
 set shell := ["bash", "-c"]
 
 hosts:
-    @if ! grep -q '^127\.0\.0\.1[[:space:]]\+hutfinder\.dev$' /etc/hosts; then \
-        echo "Error: '127.0.0.1 hutfinder.dev' not found in /etc/hosts."; \
+    @if ! grep -q '^127\.0\.0\.1[[:space:]]\+hutfinder\.localhost$' /etc/hosts; then \
+        echo "Error: '127.0.0.1 hutfinder.localhost' not found in /etc/hosts."; \
         echo "Please add the following line to your /etc/hosts file:"; \
-        echo "127.0.0.1 hutfinder.dev"; \
-        exit 1; \
-    fi
-
-    @if ! grep -q '^127\.0\.0\.1[[:space:]]\+hutfinder\.prod$' /etc/hosts; then \
-        echo "Error: '127.0.0.1 hutfinder.prod' not found in /etc/hosts."; \
-        echo "Please add the following line to your /etc/hosts file:"; \
-        echo "127.0.0.1 hutfinder.prod"; \
+        echo "127.0.0.1 hutfinder.localhost"; \
         exit 1; \
     fi
 
