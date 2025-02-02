@@ -184,5 +184,10 @@ def submit():
         return jsonify({"status": "success", "markers": table_to_dict(filtered_huts)})
 
 
+def create_app():
+    """Create app for waitress."""
+    return app
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="localhost", port=5555)
