@@ -1,5 +1,6 @@
 """Serves public_transport_airbnb backend with flask."""
 
+import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -7,8 +8,10 @@ from typing import Any, Dict, Text
 
 import geopandas as gpd
 import pandas as pd
+import psycopg2
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS, cross_origin
+from sqlalchemy import create_engine
 
 from filtering import filter_huts
 
@@ -21,11 +24,32 @@ CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (nu
 ONLINE_AVAIL_CHECK = False
 # if false, need to set path to availability file
 AVAIL_PATH = os.path.join("data", "availability.csv")
+# db login for database
+DB_LOGIN_PATH = "db_login.json"
 # debug mode: directly return rendered html table
 DEBUG = False
 
+with open(DB_LOGIN_PATH, "r") as infile:
+    db_credentials = json.load(infile)
+
+
+def get_con():
+    """Initialize connection to database."""
+    return psycopg2.connect(**db_credentials)
+
+
 # load huts database
 huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
+
+
+def reload_availability(date: str = "*"):
+    """Reload availability table."""
+    global availability
+    # create engine
+    engine = create_engine("postgresql+psycopg2://", creator=get_con)
+    # load availability
+    availability = pd.read_sql(f"SELECT {date} FROM availability", engine)
+    return availability
 
 
 @app.route("/")
@@ -154,7 +178,7 @@ def submit():
     # filter by availability
     if check_date not in ["None", ""] and os.path.exists(AVAIL_PATH):
         # load availability (cannot preload it because it is updated daily)
-        availability = pd.read_csv(AVAIL_PATH)
+        availability = reload_availability(check_date)
 
         if DEBUG:
             return availability_as_html(availability, filtered_huts)
@@ -163,9 +187,7 @@ def submit():
             return jsonify({"status": "error", "message": "Date not available"})
 
         # check availability with date
-        availability = (pd.read_csv(AVAIL_PATH)[["id", "room_type", check_date]]).rename(
-            {check_date: "availability"}, axis=1
-        )
+        availability.rename({check_date: "availability"}, axis=1, inplace=True)
         availability.dropna(subset=["availability"], inplace=True)
         availability["available_spaces"] = (availability["availability"].str.split(" ").str[0]).astype(int)
         # sum up availability for all room types
