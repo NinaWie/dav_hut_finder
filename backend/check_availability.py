@@ -1,15 +1,12 @@
 """Scrapes alpsonline.org for availability."""
 
 import datetime
+import logging
 import os
-from collections import defaultdict
-from typing import Any, List, Text
+from typing import Any, Text
 
-import geopandas as gpd
-import pandas as pd
-import requests
+import numpy as np
 from bs4 import BeautifulSoup
-from bs4.element import ResultSet
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
@@ -19,214 +16,240 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-BASE_URL = "https://www.alpsonline.org/reservation/calendar?hut_id="
+BASE_URL = "https://www.hut-reservation.org/reservation/book-hut/"
 CHROMEDRIVER_PATH = "/usr/local/bin/chromedriver"
 
 SERVICE = Service(CHROMEDRIVER_PATH) if os.path.exists(CHROMEDRIVER_PATH) else None
+
+# set up logger
+logger = logging.getLogger(__name__)
 
 
 class AvailabilityChecker:
     """AvailabilityChecker handles scraping alpsonline.org and parsing results into Pandas DataFrames."""
 
     def __init__(self, base_url: Text = BASE_URL) -> None:
+        """Initialize driver."""
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")  # Required for some Linux environments
         chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
         chrome_options.add_argument("--remote-debugging-port=9222")  # Set a port for remote debugging
         self.driver = webdriver.Chrome(service=SERVICE, options=chrome_options)
-        self.time_to_sleep = 5
         self.base_url = base_url
+        self.wait = WebDriverWait(self.driver, 3)
 
-    def __call__(self, hut_id: int, start_date: datetime.date, biweeks_ahead: int = 1) -> pd.DataFrame:
+    def __call__(self, hut_id: int, start_date: datetime.date, end_date: datetime.date) -> dict:
         """
         Callable function of AvailabilityChecker that performs scraping.
 
         Args:
             hut_id: hut id that is used to check BASE_URL + hut_id
             start_date: start date of query
-            biweeks_ahead: how many weeks to look ahead
+            end_date: end date of query
 
         Returns:
             pd.DataFrame containing availability info
+            status (whether the request was successful)
         """
-        url = self.base_url + str(hut_id)
-
-        # check if hut is in booking system
-        reservation_avail = self.check_reservation_possible(url)
-        if not reservation_avail:
-            print(f"Skipping hut {hut_id} because not part of online reservation system")
-            return pd.DataFrame()
-
-        # initialize interactive driver
+        # get url for this hut
+        url = self.base_url + str(hut_id) + "/wizard"
         self.driver.get(url)
 
-        # repeat x times (usually just one time, which gives two weeks availability)
-        date_range_result = []
-        for i in range(biweeks_ahead):
-            date = start_date + datetime.timedelta(days=14 * i)
-            input_date = date.strftime("%d.%m.%Y")
-            soup = self.get_soup_for_date(input_date)  # date_input from driver
-            # get rooms
-            rooms = self.find_room_in_soup(soup)
+        # initialize prev table
+        old_table_html = ""
 
-            # get skip dates
-            booking_closed = soup.find_all("div", id=lambda x: x and "bookingClosed" in x)
-            skip_dates = [int(r.get("id")[13:]) for r in booking_closed if "display: none" not in r.get("style")]
+        # read preamble
+        preamble = self.get_preamble()
+        # check if there is a start date in the preamble
+        date_from_msg = self.convert_message_to_date(preamble)
 
-            # make list of 14 dates (14 max)
-            date_list = [date + datetime.timedelta(days=i) for i in range(14)]
+        # set start date
+        if date_from_msg is not None:
+            logger.info(f"Set start date based on preamble {date_from_msg.date()}")
+            current_start_date = date_from_msg
+        else:
+            current_start_date = start_date
 
-            date_cat = self.get_spaces_per_room(rooms, date_list, skip_dates)
+        avail_on_date = {}
+        # biweek_counter = 0
+        attempt_count = 0
 
-            date_range_result.append(date_cat)
+        while current_start_date < end_date:
+            # get str start and end to paste into calendar
+            str_start_date = current_start_date.strftime("%d.%m.%Y")
+            str_end_date = (current_start_date + datetime.timedelta(days=14)).strftime("%d.%m.%Y")
 
-        # combine the weeks
-        date_range_result = pd.concat(date_range_result).swapaxes(1, 0)
-        return date_range_result
+            logger.info(f"Hut {hut_id}: {str_start_date} - {str_end_date}")
 
-    def check_reservation_possible(self, url: Text) -> bool:
-        """
-        Check if the hut is even part of the reservation system.
+            # Wait until we find a web element where the date can be input
+            try:
+                date_input = self.wait.until(EC.visibility_of_element_located((By.ID, "cy-arrivalDate__input")))
+            except TimeoutException:
+                logger.info("Hut not found (no calendar), break")
+                return None, "Error: Not in system!"
 
-        Args:
-            url: url to check
+            # input start date
+            date_input.clear()
+            date_input.send_keys(str_start_date)
+            date_input.send_keys(Keys.RETURN)
 
-        Returns:
-            bool: True if reservation possible, False if not
-        """
-        response = requests.get(url)
-        if response.status_code != 200:
-            return False
-        html_content = response.text
-        soup = BeautifulSoup(html_content, "html.parser")  # , "lxml")
-        rooms = soup.find_all("div", id=lambda x: x and x.startswith("room"))
-        return len(rooms) >= 2
+            # input end date
+            date_input_end = self.driver.find_element(By.XPATH, "//input[@formcontrolname='departureDate']")
+            date_input_end.clear()
+            date_input_end.send_keys(str_end_date)
+            date_input.send_keys(Keys.RETURN)
 
-    def close(self):
-        """Close chrome diver connection."""
-        self.driver.quit()
+            # Load table
+            try:
+                self.wait_for_table_exists()
+            except TimeoutException:
+                logger.info("Table does not load")
+                try:
+                    error_element = WebDriverWait(self.driver, 2).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "app-error-messages .error_message"))
+                    )
+                    # put error message into fields
+                    for date_index in range(14):
+                        current_date = (current_start_date + datetime.timedelta(days=date_index)).strftime("%d.%m.%Y")
+                        avail_on_date[current_date] = error_element.text
 
-    def get_soup_for_date(self, input_date: datetime.time) -> BeautifulSoup:
-        """
-        Create BeautifulSoup object for HTML with date entered.
+                    logger.info(f"Error message: {error_element.text}")
 
-        Args:
-            input_date: date to enter in input fields
+                    # try to find a new start date in the error message
+                    alternative_start_date = self.convert_message_to_date(error_element.text)
+                    if alternative_start_date is not None:
+                        # clear and set date
+                        self.clear_input_field(date_input)
+                        self.clear_input_field(date_input_end)
+                        if alternative_start_date == current_start_date:
+                            # same error esage as before! --> go a bit further
+                            alternative_start_date = alternative_start_date + datetime.timedelta(days=3)
+                        # set the start date to the date in the message + 1 (because usually "closed until" msg)
+                        current_start_date = alternative_start_date + datetime.timedelta(days=1)
+                        logger.info(f"Using error message, set start date to {alternative_start_date}")
+                        continue
+                except TimeoutException:
+                    # no error message show --> error message to unknown
+                    for date_index in range(14):
+                        current_date = (current_start_date + datetime.timedelta(days=date_index)).strftime("%d.%m.%Y")
+                        avail_on_date[current_date] = "Unknown error"
 
-        Returns:
-            soup: BeautifulSoup
-        """
-        # print("running soup for input date", input_date)
-        wait = WebDriverWait(self.driver, 7)
-        date_input = wait.until(EC.visibility_of_element_located((By.ID, "fromDate")))
-        initial_text = self.driver.find_element(By.ID, "bookingDate0").text
+                # clear date
+                self.clear_input_field(date_input)
+                self.clear_input_field(date_input_end)
 
-        # Clear the date field and input new date
-        date_input.clear()
-        date_input.send_keys(input_date)
-        date_input.send_keys(Keys.RETURN)
-        # time.sleep(self.time_to_sleep)
+                # Try again (two attempts in total, in the first one, just try the same date again)
+                if attempt_count == 0:
+                    # try second time because sometimes issue that doesn't load directly
+                    attempt_count += 1
+                else:
+                    # After the first attempt, always increase by factor of 3
+                    current_start_date += datetime.timedelta(days=3 ** (attempt_count - 1))
+                    logger.info(f"Checking {3 ** (attempt_count - 1)} days further")
+                    attempt_count += 1
+                continue
 
-        # Wait until the text changes, indicating that new data has loaded
+            # Table was found!
+            # Wait for the table content to change
+            self.wait_for_table_update(old_table_html)
+
+            table_html = self.driver.find_element(
+                By.CSS_SELECTOR, 'table[aria-label="Date Availability Table"]'
+            ).get_attribute("outerHTML")
+
+            # Parse the table HTML using BeautifulSoup
+            soup = BeautifulSoup(table_html, "html.parser")
+            # Find all rows in the table
+            rows = soup.find_all("mat-row", class_="mat-mdc-row")
+            # Extract data from each row
+            for row in rows:
+                # Extract date and available seats
+                date_cell = row.find("td", class_="table_row_date")
+                places_cell = row.find("td", class_="table_row_places")
+
+                if date_cell and places_cell:
+                    date = date_cell.get_text(strip=True)  # Extract and clean the date text
+                    places = places_cell.get_text(strip=True)  # Extract and clean the available seats text
+                    avail_on_date[date] = places.replace("!", "")
+                    logger.info(f"-found availability at {date}: {places}")
+
+            self.clear_input_field(date_input)
+            self.clear_input_field(date_input_end)
+
+            # go 14 days further
+            current_start_date += datetime.timedelta(days=14)
+
+            # Capture the current table content before waiting for it to change
+            old_table_html = self.driver.find_element(
+                By.CSS_SELECTOR, 'table[aria-label="Date Availability Table"]'
+            ).get_attribute("outerHTML")
+
+        return avail_on_date, "Success"
+
+    def wait_for_table_update(self, old_html: Any):
+        """Wait until the table content changes compared to the previous iteration."""
+        # Wait until the table content changes compared to the previous iteration
+        self.wait.until(
+            lambda x: self.driver.find_element(
+                By.CSS_SELECTOR, 'table[aria-label="Date Availability Table"]'
+            ).get_attribute("outerHTML")
+            != old_html
+        )
+
+    def wait_for_table_exists(self):
+        """Wait until the table is present in the DOM."""
+        # Wait for the table to update based on the new date input
+        self.wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'table[aria-label="Date Availability Table"]'))
+        )
+
+    def get_preamble(self):
+        """Load preamble text from the page."""
         try:
-            wait.until(lambda driver: driver.find_element(By.ID, "bookingDate0").text != initial_text)
-        except TimeoutException:
-            print("Warning: Timed out waiting for text to change")
+            # Locate all preamble sections (multiple spans)
+            preamble_elements = WebDriverWait(self.driver, 2).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "app-check-availability-step .welcomeMessage"))
+            )
 
-        # convert to soup
-        html_content = self.driver.page_source
-        soup = BeautifulSoup(html_content)
-        return soup
+            # Concatenate all the text content from the preamble spans
+            preamble_text = " ".join([element.text for element in preamble_elements])
+            return preamble_text
+        except TimeoutException:  # Double check
+            return ""
 
-    def day_id_from_room(self, room: Any) -> int:
-        """
-        Extract day ID from room soup result.
+    def convert_message_to_date(self, message: str):
+        """Find date in message if possible."""
+        try:
+            if "Sommersaisonstart" in message:
+                hut_open_date = message.split("Sommersaisonstart")[-1]
+                dd, mm, yy = hut_open_date.split(".")
+                date_from_msg = datetime.datetime(int(yy), int(mm), int(dd))
+                return date_from_msg
+            elif "geschlossen" in message:
+                error_parts = message.split(" ")
+                dd, mm, yy = error_parts[-2].split(".")
+                date_from_msg = datetime.datetime(int(yy), int(mm), int(dd))
+                return date_from_msg
+            elif "closed until" in message or "fino al" in message:
+                error_parts = message[:-1].split(" ")  # delete dot and divide
+                dd, mm, yy = error_parts[-1].split(".")
+                date_from_msg = datetime.datetime(int(yy), int(mm), int(dd))
+                return date_from_msg
+            elif "bewarteten" in message and "unbewarteten" in message:
+                for yy in np.arange(2025, 2030, 1):
+                    str_yy = f".{yy}"
+                    # iterate over all years to make it work also for the next years
+                    if str_yy in message:
+                        date_part = (message.split(str_yy)[0]).split(" ")[-1]
+                        dd, mm = date_part.split(".")
+                        date_from_msg = datetime.datetime(int(yy), int(mm), int(dd))
+                        return date_from_msg
+        except ValueError:
+            pass
+        return None
 
-        Args:
-            room (bs Result): beautiful soup result for one room
-
-        Returns:
-            int: ID of the day
-        """
-        room_id = room.get("id")
-        return int(room_id.split("-")[0][4:])
-
-    def get_spaces_per_room(
-        self, rooms: ResultSet, date_list: List[datetime.time], skip_dates: List[int]
-    ) -> pd.DataFrame:
-        """
-        Extract available rooms from bf4.element.ResultSet.
-
-        Args:
-            rooms: List containing results from BeautifulSoup scrape
-            date_list: List of dates to consider
-            skip_dates: List of dates to skip
-
-        Returns:
-            date_cat: pd.DataFrame containing available rooms
-        """
-        day_list = defaultdict(dict)
-        cat = "reservation_possible"
-        for room in rooms:
-            day = self.day_id_from_room(room)
-            day_str = date_list[day].strftime("%d.%m.%Y")
-            if day in skip_dates:
-                day_list[day_str][cat] = ""
-            # get category
-            cat = room.find("label", id=lambda x: x and x.startswith("bedCategoryLabel")).text.strip()
-            free_spaces = room.find("label", id=lambda x: x and x.startswith("freePlaces")).text.strip()
-            day_list[day_str][cat] = free_spaces
-        date_cat = pd.DataFrame(day_list).swapaxes(1, 0)
-
-        return date_cat
-
-    def find_room_in_soup(self, soup: BeautifulSoup) -> ResultSet:
-        """
-        Extract room information from BeautifulSoup Object.
-
-        Args:
-            soup: BeautifulSoup object containing html data
-        Returns:
-            bs4.element.ResultSet (actually list) containing rooms information
-        """
-        return soup.find_all("div", id=lambda x: x and x.startswith("room") and "Info" not in x)
-
-    def availability_specific_date(self, filtered_huts: gpd.GeoDataFrame, check_date: Text) -> pd.DataFrame:
-        """
-        Runs availabiltiy check for a hut and returns the results for a single day.
-
-        Args:
-            filtered_huts: GeoDataFrame containing results of hut filtering
-            check_date: date to check
-
-        Returns:
-            result: pd.DataFrame encoding availability
-        """
-        # convert date into datetime object
-        date_object = datetime.datetime.strptime(check_date, "%d.%m.%Y")
-
-        # iterate over filtered huts and run availability check
-        all_avail = []
-        # iterate over all filtered huts
-        for _, row in filtered_huts.iterrows():
-            hut_name = row["name"]
-            hut_id = row["id"]
-
-            out_df = self(hut_id, date_object)
-            if len(out_df) > 0:
-                out_df.index.name = "room_type"
-                out_df.reset_index(inplace=True)
-                out_df["hut_name"] = hut_name
-            # # uncomment to save hut results as separate files
-            # out_df.to_csv(f"outputs_new/{hut_id}.csv")
-            all_avail.append(out_df)
-        all_avail = pd.concat(all_avail)
-
-        # get only the relevant rows
-        result = all_avail[["hut_name", "room_type", check_date]].dropna()
-        # transform nr spaces to int
-        result[check_date] = result[check_date].apply(lambda x: int(x.split(" ")[0]))
-        # rename col
-        result = result.rename({check_date: "available_beds"}, axis=1)
-        return result
+    def clear_input_field(self, element: Any):
+        """Clears the input field by selecting all text and deleting it."""
+        element.send_keys(Keys.CONTROL + "a")  # Select all text (CMD for Mac)
+        element.send_keys(Keys.BACKSPACE)  # Delete selected text
