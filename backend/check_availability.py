@@ -38,6 +38,7 @@ class AvailabilityChecker:
         self.driver = webdriver.Chrome(service=SERVICE, options=chrome_options)
         self.base_url = base_url
         self.wait = WebDriverWait(self.driver, 3)
+        logger.info("Initialized Checked")
 
     def __call__(self, hut_id: int, start_date: datetime.date, end_date: datetime.date) -> dict:
         """
@@ -236,7 +237,9 @@ class AvailabilityChecker:
                 dd, mm, yy = error_parts[-1].split(".")
                 date_from_msg = datetime.datetime(int(yy), int(mm), int(dd))
                 return date_from_msg
-            elif "bewarteten" in message and "unbewarteten" in message:
+            elif ("bewarteten" in message and "unbewarteten" in message) or (
+                "unserviced" in message and "serviced" in message
+            ):
                 for yy in np.arange(2025, 2030, 1):
                     str_yy = f".{yy}"
                     # iterate over all years to make it work also for the next years

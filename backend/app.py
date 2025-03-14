@@ -22,8 +22,6 @@ CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (nu
 # if set to true, check on the fly whether the huts are available (might take a while)
 # if false, load precomputed availability table
 ONLINE_AVAIL_CHECK = False
-# if false, need to set path to availability file
-AVAIL_PATH = os.path.join("data", "availability.csv")
 # db login for database
 DB_LOGIN_PATH = "db_login.json"
 # debug mode: directly return rendered html table
@@ -47,7 +45,7 @@ def get_availability_for_date(date: str = "*") -> pd.DataFrame:
     # create engine
     engine = create_engine("postgresql+psycopg2://", creator=get_con)
     # load availability
-    availability = pd.read_sql(f"SELECT hut_id, date, places_avail FROM hut_availability WHERE date={date}", engine)
+    availability = pd.read_sql(f"SELECT hut_id, date, places_avail FROM hut_availability WHERE date='{date}'", engine)
     return availability
 
 
@@ -166,26 +164,24 @@ def submit():
         "max_altitude": float(data["maxAltitude"]),
     }
 
+    # get inputs for checking date availability (need to convert to datetime and back for correct format)
+    check_date_str = data.get("date", None)
+    min_avail_spaces = int(data.get("minSpaces", 1))
+
     # filter huts by distance from start etc
     filtered_huts = filter_huts(huts, **filter_attributes)
 
-    # get inputs for checking date availability (need to convert to datetime and back for correct format)
-    check_data_datetime = datetime.strptime(data["date"], "%Y-%m-%d")
-    check_date = check_data_datetime.strftime("%d.%m.%Y")
-    min_avail_spaces = float(data.get("minSpaces", 1))
-
     # filter by availability
-    if check_date not in ["None", ""] and os.path.exists(AVAIL_PATH):
+    if check_date_str is not None:
+        # transform check date
+        check_date_datetime = datetime.strptime(check_date_str, "%Y-%m-%d")
+        check_date = check_date_datetime.strftime("%d.%m.%Y")
+
         # load availability (cannot preload it because it is updated daily)
         availability = get_availability_for_date(check_date)
-        if availability.empty:
-            return jsonify({"status": "error", "message": "No places available on this date"})
 
         if DEBUG:
             return availability_as_html(availability, filtered_huts)
-
-        if check_date not in availability.columns:
-            return jsonify({"status": "error", "message": "Date not available"})
 
         # # version 1
         # availability.rename({check_date: "availability"}, axis=1, inplace=True)
@@ -195,7 +191,8 @@ def submit():
         # availability = availability.groupby("id")["available_spaces"].sum().reset_index()
 
         available_huts = availability[availability["places_avail"] >= min_avail_spaces]
-        huts_filtered_and_available = filtered_huts[filtered_huts["id"].isin(available_huts["hut_id"])]
+        huts_filtered_and_available = filtered_huts.merge(available_huts, left_on="id", right_on="hut_id", how="inner")
+        # huts_filtered_and_available = filtered_huts[filtered_huts["id"].isin(available_huts["hut_id"])]
         return jsonify({"status": "success", "markers": table_to_dict(huts_filtered_and_available)})
 
     # just return filtered huts without availability check
