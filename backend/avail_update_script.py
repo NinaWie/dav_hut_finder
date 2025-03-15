@@ -33,6 +33,7 @@ def convert_non_int_to_zero(x: str) -> int:
 
 # db login for database
 DB_LOGIN_PATH = "db_login.json"
+SKIP_NOT_IN_SYSTEM = True
 
 # Set up database connection
 with open(DB_LOGIN_PATH, "r") as infile:
@@ -95,13 +96,21 @@ end_date = today + datetime.timedelta(days=120)  # NOTE: need to decide what to 
 
 tic_start = time.time()
 
+with open(os.path.join("data", "not_in_system.json"), "r") as infile:
+    huts_not_in_system = json.load(infile)
+
 # result lists
-all_avail, huts_not_in_system = [], []  # NOTE: later we should directly skip the huts that are not in system
+all_avail = []
 
 # iterate over huts
 for hut_id in range(1, 673):
     logger.info(f"----------- HUT {hut_id} --------")
     tic = time.time()
+
+    # skip huts that cannot be booked online
+    if SKIP_NOT_IN_SYSTEM and hut_id in huts_not_in_system:
+        logger.info(f"Not in system - skip hut {hut_id}")
+        continue
 
     # call availability checker
     try:
@@ -111,11 +120,11 @@ for hut_id in range(1, 673):
         continue
 
     # check if an error was returned
-    if status != "Success":
-        if result_for_hut == "Error: Not in system!":
-            huts_not_in_system.append(hut_id)
-        else:
-            logger.error(f"{hut_id} failed with error {status}")
+    if status == "Error: Not in system!":
+        huts_not_in_system.append(hut_id)
+        continue
+    elif status != "Success":
+        logger.error(f"{hut_id} failed with error {status}")
         continue
 
     # update the database
