@@ -34,6 +34,7 @@ def convert_non_int_to_zero(x: str) -> int:
 # db login for database
 DB_LOGIN_PATH = "db_login.json"
 SKIP_NOT_IN_SYSTEM = True
+PATH_NOT_IN_SYSTEM = os.path.join("data", "not_in_system.json")
 
 # Set up database connection
 with open(DB_LOGIN_PATH, "r") as infile:
@@ -96,8 +97,11 @@ end_date = today + datetime.timedelta(days=120)  # NOTE: need to decide what to 
 
 tic_start = time.time()
 
-with open(os.path.join("data", "not_in_system.json"), "r") as infile:
-    huts_not_in_system = json.load(infile)
+if os.path.exists(PATH_NOT_IN_SYSTEM):
+    with open(PATH_NOT_IN_SYSTEM, "r") as infile:
+        huts_not_in_system = json.load(infile)
+else:
+    huts_not_in_system = []
 
 # result lists
 all_avail = []
