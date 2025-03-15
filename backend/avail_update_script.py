@@ -90,8 +90,8 @@ checker = AvailabilityChecker()
 # set start and end date
 today = datetime.datetime.today()
 today_date = today.date()
-start_date = today + datetime.timedelta(days=60)  # NOTE: set to today
-end_date = today + datetime.timedelta(days=80)  # NOTE: need to decide what to set this to
+start_date = today
+end_date = today + datetime.timedelta(days=120)  # NOTE: need to decide what to set this to
 
 tic_start = time.time()
 

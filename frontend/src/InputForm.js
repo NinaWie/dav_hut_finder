@@ -47,7 +47,6 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
         <TextField label="Maximal Distance" type="number" step="any" name="maxDistance" value={localFormData.maxDistance} onChange={handleChange} required />
         <TextField label="Minimal Altitude" type="number" step="any" name="minAltitude" value={localFormData.minAltitude} onChange={handleChange} required />
         <TextField label="Maximal Altitude" type="number" step="any" name="maxAltitude" value={localFormData.maxAltitude} onChange={handleChange} required />
-        <TextField label="Minimal Spaces" type="number" name="minSpaces" value={localFormData.minSpaces} onChange={handleChange} />
       </Box>
 
       {/* New "Filter by Availability" Section */}
@@ -59,10 +58,11 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
               onChange={handleDateCheckboxChange}
             />
           }
-          label="Filter by Availability"
+          label="Filter by Date"
         />
 
         {filterByDate && (
+          <Box display="flex" flexDirection="row" flexWrap="nowrap" gap={2}>
           <TextField
             label="Date"
             type="date"
@@ -73,7 +73,17 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
               shrink: true,
             }}
           />
+          <TextField
+            label="Minimal Spaces"
+            type="number"
+            name="minSpaces"
+            value={localFormData.minSpaces}
+            onChange={handleChange}
+          />
+          </Box>
         )}
+
+
       </Box>
 
       <Button type="submit" variant="contained" color="primary" style={{ marginTop: '10px' }}>
