@@ -12,16 +12,18 @@ services:
       - caddy_config:/config
   dev_backend:
     image: hutfinder/dev_backend
+    container_name: backend-dev 
     build: ./backend
     env_file: .env
     working_dir: /home/maeuschen/backend
     volumes:
       - ./backend:/home/maeuschen/backend
+      - ./db_login.json:/home/maeuschen/backend/db_login.json
     command: flask --debug run
   dev:
     image: hutfinder/dev
+    container_name: frontend-dev
     build: ./frontend
-    env_file: .env
     depends_on:
       - dev_backend
       - caddy
@@ -32,16 +34,18 @@ services:
     command: npm start
   prod_backend:
     image: hutfinder/prod_backend
-    build: ./backend
+    container_name: backend-prod 
     env_file: .env
+    build: ./backend
     working_dir: /home/maeuschen/backend
     volumes:
       - ./backend:/home/maeuschen/backend
-    command: waitress-serve --host=0.0.0.0 --port=5000 app:app
+      - ./db_login.json:/home/maeuschen/backend/db_login.json
+    command: waitress-serve --port=5000 app:app
   prod:
     image: hutfinder/prod
+    container_name: frontend-prod
     build: ./frontend
-    env_file: .env
     depends_on:
       - prod_backend
       - caddy
