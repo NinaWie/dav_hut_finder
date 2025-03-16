@@ -5,6 +5,7 @@ backend/outputs/
 old_data/
 hut_*
 !hut_finder
+*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

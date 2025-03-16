@@ -9,6 +9,7 @@ from typing import Any, Dict, Text
 import geopandas as gpd
 import pandas as pd
 import psycopg2
+import sqlalchemy
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS, cross_origin
 from sqlalchemy import create_engine
@@ -34,6 +35,12 @@ with open(DB_LOGIN_PATH, "r") as infile:
 def get_con():
     """Initialize connection to database."""
     return psycopg2.connect(**db_credentials)
+
+
+try:
+    engine = create_engine("postgresql+psycopg2://", creator=get_con)
+except sqlalchemy.exc.OperationalError as err:
+    raise RuntimeError("Database issue: No connection can be established! Check login and database server") from err
 
 
 # load huts database
