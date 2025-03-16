@@ -26,7 +26,9 @@ dependencies = [
     "flask-cors==4.0.1",
     "haversine==2.8.1",
     "selenium==4.22.0",
-    "waitress==3.0.2"
+    "waitress==3.0.2",
+    "psycopg2",
+    "sqlalchemy"
 ]
 
 [project.urls]

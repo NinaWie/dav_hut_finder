@@ -1,5 +1,6 @@
 """Serves public_transport_airbnb backend with flask."""
 
+import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -7,8 +8,10 @@ from typing import Any, Dict, Text
 
 import geopandas as gpd
 import pandas as pd
+import psycopg2
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS, cross_origin
+from sqlalchemy import create_engine
 
 from filtering import filter_huts
 
@@ -19,13 +22,31 @@ CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (nu
 # if set to true, check on the fly whether the huts are available (might take a while)
 # if false, load precomputed availability table
 ONLINE_AVAIL_CHECK = False
-# if false, need to set path to availability file
-AVAIL_PATH = os.path.join("data", "availability.csv")
+# db login for database
+DB_LOGIN_PATH = "db_login.json"
 # debug mode: directly return rendered html table
 DEBUG = False
 
+with open(DB_LOGIN_PATH, "r") as infile:
+    db_credentials = json.load(infile)
+
+
+def get_con():
+    """Initialize connection to database."""
+    return psycopg2.connect(**db_credentials)
+
+
 # load huts database
 huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
+
+
+def get_availability_for_date(date: str = "*") -> pd.DataFrame:
+    """Get table with number of available places for each hut on a given date."""
+    # create engine
+    engine = create_engine("postgresql+psycopg2://", creator=get_con)
+    # load availability
+    availability = pd.read_sql(f"SELECT hut_id, date, places_avail FROM hut_availability WHERE date='{date}'", engine)
+    return availability
 
 
 @app.route("/")
@@ -143,37 +164,36 @@ def submit():
         "max_altitude": float(data["maxAltitude"]),
     }
 
+    # get inputs for checking date availability (need to convert to datetime and back for correct format)
+    check_date_str = data.get("date", None)
+    min_avail_spaces = int(data.get("minSpaces", 1))
+
     # filter huts by distance from start etc
     filtered_huts = filter_huts(huts, **filter_attributes)
 
-    # get inputs for checking date availability (need to convert to datetime and back for correct format)
-    check_data_datetime = datetime.strptime(data["date"], "%Y-%m-%d")
-    check_date = check_data_datetime.strftime("%d.%m.%Y")
-    min_avail_spaces = float(data.get("minSpaces", 1))
-
     # filter by availability
-    if check_date not in ["None", ""] and os.path.exists(AVAIL_PATH):
+    if check_date_str is not None:
+        # transform check date
+        check_date_datetime = datetime.strptime(check_date_str, "%Y-%m-%d")
+        check_date = check_date_datetime.strftime("%d.%m.%Y")
+
         # load availability (cannot preload it because it is updated daily)
-        availability = pd.read_csv(AVAIL_PATH)
+        availability = get_availability_for_date(check_date)
 
         if DEBUG:
             return availability_as_html(availability, filtered_huts)
 
-        if check_date not in availability.columns:
-            return jsonify({"status": "error", "message": "Date not available"})
+        # # version 1
+        # availability.rename({check_date: "availability"}, axis=1, inplace=True)
+        # availability.dropna(subset=["availability"], inplace=True)
+        # availability["available_spaces"] = (availability["availability"].str.split(" ").str[0]).astype(int)
+        # # sum up availability for all room types
+        # availability = availability.groupby("id")["available_spaces"].sum().reset_index()
 
-        # check availability with date
-        availability = (pd.read_csv(AVAIL_PATH)[["id", "room_type", check_date]]).rename(
-            {check_date: "availability"}, axis=1
-        )
-        availability.dropna(subset=["availability"], inplace=True)
-        availability["available_spaces"] = (availability["availability"].str.split(" ").str[0]).astype(int)
-        # sum up availability for all room types
-        availability = availability.groupby("id")["available_spaces"].sum().reset_index()
-
-        huts_with_availability = pd.merge(filtered_huts, availability, how="left", left_on="id", right_on="id")
-        huts_with_availability = huts_with_availability[huts_with_availability["available_spaces"] > min_avail_spaces]
-        return jsonify({"status": "success", "markers": table_to_dict(huts_with_availability)})
+        available_huts = availability[availability["places_avail"] >= min_avail_spaces]
+        huts_filtered_and_available = filtered_huts.merge(available_huts, left_on="id", right_on="hut_id", how="inner")
+        # huts_filtered_and_available = filtered_huts[filtered_huts["id"].isin(available_huts["hut_id"])]
+        return jsonify({"status": "success", "markers": table_to_dict(huts_filtered_and_available)})
 
     # just return filtered huts without availability check
     else:

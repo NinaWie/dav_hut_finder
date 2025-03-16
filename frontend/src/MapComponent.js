@@ -45,20 +45,27 @@ const MapComponent = ({ markers, handleMapClick }) => {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
 
-      {/* Render markers from the fetched data */}
-      {markers.map((marker) => (
-        <Marker key={marker.id} position={[marker.latitude, marker.longitude]}>
-          <Popup>
-            Hütte: {marker.name}
-            <br />
-            Höhe: {marker.altitude} meters
-            <br />
-            Entfernung: {marker.distance} km
-            <br />
-            Verein: {marker.verein}
-          </Popup>
-        </Marker>
-      ))}
+    {/* Render markers from the fetched data */}
+    {markers.map((marker) => (
+      <Marker key={marker.id} position={[marker.latitude, marker.longitude]}>
+        <Popup>
+          Hütte: {marker.name}
+          <br />
+          Höhe: {marker.altitude} meters
+          <br />
+          Entfernung: {marker.distance} km
+          <br />
+          Verein: {marker.verein}
+          {marker.places_avail && ( // Conditionally render Available Beds if 'minSpaces' exists
+            <>
+              <br />
+              Available Beds: {marker.places_avail}
+            </>
+          )}
+        </Popup>
+      </Marker>
+    ))}
+
 
       {/* Render the personIcon at the clicked position */}
       {markerPosition && (
