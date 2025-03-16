@@ -12,7 +12,7 @@ services:
       - caddy_config:/config
   dev_backend:
     image: hutfinder/dev_backend
-    container_name: backend-dev 
+    container_name: backend-dev
     build: ./backend
     env_file: .env
     working_dir: /home/maeuschen/backend
@@ -34,7 +34,7 @@ services:
     command: npm start
   prod_backend:
     image: hutfinder/prod_backend
-    container_name: backend-prod 
+    container_name: backend-prod
     env_file: .env
     build: ./backend
     working_dir: /home/maeuschen/backend
