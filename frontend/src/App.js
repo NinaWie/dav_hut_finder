@@ -95,7 +95,7 @@ function App() {
         <DialogTitle>Welcome to the Hut Finder <EmojiPeopleIcon fontSize="large" /></DialogTitle>
         <DialogContent>
           <Typography variant="body1">
-            Please click somewhere on the map and submit afterwards to see which huts are available.
+            Please click somewhere on the map. Optionally filter by date and hit submit to see which huts are available by date.
           </Typography>
         </DialogContent>
         <DialogActions>
