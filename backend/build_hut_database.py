@@ -68,6 +68,13 @@ def find_verein(hut):
 
 
 def crawl_general_info(out_path: str, final_out_path: str):
+    """
+    Crawls general information about huts and saves it to the specified paths.
+
+    Args:
+        out_path (str): Path to save raw JSON files.
+        final_out_path (str): Path to save the final CSV file with hut information.
+    """
     # path to save raw json files
     os.makedirs(out_path, exist_ok=True)
 
@@ -120,6 +127,15 @@ def crawl_general_info(out_path: str, final_out_path: str):
 
 
 def call_maps_api(row):
+    """
+    Calls the Google Maps API to get the latitude and longitude for a given hut.
+
+    Args:
+        row (pd.Series): A row from the DataFrame containing hut information.
+
+    Returns:
+        pd.Series: The updated row with latitude and longitude added.
+    """
     hut_name = row["name"]
     verein = row["verein"]
     if pd.isna(hut_name):
@@ -137,6 +153,15 @@ def call_maps_api(row):
 
 
 def get_alt_meter(alt):
+    """
+    Converts altitude from string to float.
+
+    Args:
+        alt (str): Altitude string with 'm' at the end.
+
+    Returns:
+        float: Altitude in meters as a float, or pd.NA if conversion fails.
+    """
     try:
         alt_int = float(alt.replace("m", ""))
     except ValueError or AttributeError:
@@ -145,6 +170,15 @@ def get_alt_meter(alt):
 
 
 def get_places_cleaned(places):
+    """
+    Cleans and converts the total sleeping places information to an integer.
+
+    Args:
+        places (str): The total sleeping places information as a string.
+
+    Returns:
+        int: The total sleeping places as an integer.
+    """
     try:
         places_int = int(places)
     except:
@@ -160,6 +194,13 @@ def get_places_cleaned(places):
 
 
 def clean_huts(inp_path, out_path):
+    """
+    Cleans and processes hut data, converting it to a GeoDataFrame and saving it as a GeoJSON file.
+
+    Args:
+        inp_path (str): Path to the input file containing hut information.
+        out_path (str): Path to save the cleaned GeoJSON file.
+    """
     huts_gdf = gpd.read_file(inp_path, index_col="id").dropna(subset="name").drop("Unnamed: 0", axis=1)
     huts_gdf["altitude_m"] = huts_gdf["altitude"].apply(get_alt_meter)
     huts_gdf["total_places"] = huts_gdf["total_places"].apply(get_places_cleaned).astype(int)

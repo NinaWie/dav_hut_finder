@@ -1,23 +1,26 @@
-import numpy as np
+"""Module to check the availability of huts using web scraping and Selenium."""
+
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 from collections import defaultdict
 import datetime
-from selenium import webdriver
+import time
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-from bs4 import BeautifulSoup
-import time
+
 
 BASE_URL = "https://www.alpsonline.org/reservation/calendar?hut_id="
 
 
 class AvailabilityChecker:
+    """Class to check availability of huts."""
+
     def __init__(self, base_url: str = BASE_URL):
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
@@ -26,6 +29,17 @@ class AvailabilityChecker:
         self.base_url = base_url
 
     def __call__(self, hut_id: int, start_date, biweeks_ahead: int = 1):
+        """
+        Check availability for a given hut over a range of dates.
+
+        Args:
+            hut_id (int): The ID of the hut.
+            start_date (datetime.date): The start date for checking availability.
+            biweeks_ahead (int): Number of biweekly periods to check ahead.
+
+        Returns:
+            pd.DataFrame: DataFrame containing availability information.
+        """
         # set url to hut
         url = self.base_url + str(hut_id)
 
@@ -63,22 +77,29 @@ class AvailabilityChecker:
         return date_range_result
 
     def check_reservation_possible(self, url):
-        """Check if the hut is even part of the reservation system"""
+        """Check if the hut is even part of the reservation system."""
         response = requests.get(url)
         if response.status_code != 200:
             return False
         html_content = response.text
         soup = BeautifulSoup(html_content, "html.parser")  # , "lxml")
         rooms = soup.find_all("div", id=lambda x: x and x.startswith("room"))
-        if len(rooms) < 2:
-            return False
-        else:
-            return True
+        return not len(rooms) < 2
 
     def close(self):
+        """Close the Selenium WebDriver."""
         self.driver.quit()
 
-    def get_soup_for_date(self, input_date):
+    def get_soup_for_date(self, input_date: str):
+        """
+        Get the BeautifulSoup object for a specific date.
+
+        Args:
+            input_date (str): The date for which to get the soup, in the format 'dd.mm.yyyy'.
+
+        Returns:
+            BeautifulSoup: The BeautifulSoup object containing the HTML content for the specified date.
+        """
         # print("running soup for input date", input_date)
         wait = WebDriverWait(self.driver, 10)
         date_input = wait.until(EC.visibility_of_element_located((By.ID, "fromDate")))
@@ -92,10 +113,30 @@ class AvailabilityChecker:
         return soup
 
     def day_id_from_room(self, room):
+        """
+        Extract the day ID from a room element.
+
+        Args:
+            room (bs4.element.Tag): The room element from which to extract the day ID.
+
+        Returns:
+            int: The day ID extracted from the room element.
+        """
         room_id = room.get("id")
         return int(room_id.split("-")[0][4:])
 
     def extract_rooms_from_soup(self, rooms, date_list, skip_dates):
+        """
+        Extract room availability information from the BeautifulSoup object.
+
+        Args:
+            rooms (list): List of room elements from the BeautifulSoup object.
+            date_list (list): List of dates for which to check availability.
+            skip_dates (list): List of dates to skip.
+
+        Returns:
+            pd.DataFrame: DataFrame containing room availability information.
+        """
         day_list = defaultdict(dict)
         cat = "reservation_possible"
         for i in range(len(rooms)):
@@ -113,10 +154,29 @@ class AvailabilityChecker:
         return date_cat
 
     def get_rooms(self, soup):
+        """
+        Get the room elements from the BeautifulSoup object.
+
+        Args:
+            soup (BeautifulSoup): The BeautifulSoup object containing the HTML content.
+
+        Returns:
+            list: List of room elements.
+        """
         return soup.find_all("div", id=lambda x: x and x.startswith("room") and "Info" not in x)
 
     def availability_specific_date(self, filtered_huts, check_date):
-        """Runs availabiltiy check for a hut and returns the results for a single day"""
+        """
+        Check availability for a specific date across multiple huts.
+
+        Args:
+            filtered_huts (pd.DataFrame): DataFrame containing hut information.
+            check_date (str): The date for which to check availability, in the format 'dd.mm.yyyy'.
+
+        Returns:
+            pd.DataFrame: DataFrame containing availability information for the specified date.
+        """
+
         # convert date into datetime object
         date_object = datetime.datetime.strptime(check_date, "%d.%m.%Y")
 

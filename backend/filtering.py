@@ -14,11 +14,13 @@ def filter_huts(
     max_altitude: int = np.inf,
     min_places: int = 0,
     max_places: int = np.inf,
-    verbose: bool = False, 
-    **kwargs
+    verbose: bool = False,
+    **kwargs,
 ):
+    """Filter huts by distance, altitude, and number of places."""
+
     def comp_haversine(row):
-        """Computes beeline distance in km"""
+        """Computes beeline distance in km."""
         return haversine((row["latitude"], row["longitude"]), (start_lat, start_lon))
 
     if min_distance > 0 or max_distance < np.inf:

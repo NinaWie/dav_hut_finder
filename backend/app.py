@@ -1,10 +1,9 @@
 """Serves public_transport_airbnb backend with flask."""
 
 import os
-from flask import Flask, jsonify, request, send_from_directory, render_template
+from flask import Flask, jsonify, request, send_from_directory, render_template, Request
 from flask_cors import CORS, cross_origin
 import geopandas as gpd
-import numpy as np
 from datetime import datetime
 import pandas as pd
 
@@ -17,6 +16,7 @@ CORS(app, origins=["*", "null"])  # allowing any origin as well as localhost (nu
 
 
 def create_app():
+    """Create the app."""
     return app
 
 
@@ -34,6 +34,7 @@ huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
 
 @app.route("/")
 def serve_index():
+    """Serve the index.html file."""
     return send_from_directory(app.static_folder, "index.html")
 
 
@@ -41,17 +42,20 @@ def serve_index():
 def serve_static_files(path):
     return send_from_directory(app.static_folder, path)
 
+
 @cross_origin()
-@app.route('/api/markers')
+@app.route("/api/markers")
 def markers():
+    """Return example markers data."""
     # Example markers data
     markers_data = [
         {"id": 1, "name": "Marker 1", "position": [46.5, 10.5]},
         {"id": 2, "name": "Marker 2", "position": [45.8326, 6.8652]},
         {"id": 3, "name": "Marker 3", "position": [45.9763, 7.6586]},
-        {"id": 4, "name": "Marker 4", "position": [47.4210, 10.9849]}
+        {"id": 4, "name": "Marker 4", "position": [47.4210, 10.9849]},
     ]
     return jsonify(markers_data)
+
 
 def convert_to_float(request, col_name, default):
     try:
@@ -61,42 +65,40 @@ def convert_to_float(request, col_name, default):
 
 
 def table_to_dict(table: pd.DataFrame):
+    """Convert a pandas DataFrame to a list of dictionaries."""
     if table.index.name is not None:
         table.reset_index(inplace=True)
     table.drop(["geometry"], axis=1, errors="ignore", inplace=True)
     return [row.to_dict() for _, row in table.iterrows()]
 
 
-@app.route('/api/submit', methods=['POST'])
+@app.route("/api/submit", methods=["POST"])
 def submit():
+    """Handle the submission of hut search data and return filtered results."""
     print("hi submit")
     data = request.json
 
     # Convert strings to floats and date string to datetime object
     processed_data = {
-        'start_lat': float(data['latitude']),
-        'start_lon': float(data['longitude']),
-        'min_distance': float(data['minDistance']),
-        'max_distance': float(data['maxDistance']),
-        'min_altitude': float(data['minAltitude']),
-        'max_altitude': float(data['maxAltitude']),
-        'date': datetime.strptime(data['date'], '%Y-%m-%d'),
-        'min_spaces': float(data.get("minSpaces", 1)),
+        "start_lat": float(data["latitude"]),
+        "start_lon": float(data["longitude"]),
+        "min_distance": float(data["minDistance"]),
+        "max_distance": float(data["maxDistance"]),
+        "min_altitude": float(data["minAltitude"]),
+        "max_altitude": float(data["maxAltitude"]),
+        "date": datetime.strptime(data["date"], "%Y-%m-%d"),
+        "min_spaces": float(data.get("minSpaces", 1)),
     }
 
     """filter huts and get availability"""
     # filter huts by distance from start etc
-    filtered_huts = filter_huts(
-        huts,
-        **processed_data
-    )
+    filtered_huts = filter_huts(huts, **processed_data)
     # whether to check availability
     check_date = processed_data["date"].strftime("%d.%m.%Y")
     min_avail_spaces = processed_data["min_spaces"]
 
     # filter by availability
     if check_date not in ["None", ""]:
-
         if ONLINE_AVAIL_CHECK:
             print(f"Checking {len(filtered_huts)} huts for availability")
             # initialize checker and scrape availability for all huts
@@ -118,7 +120,7 @@ def submit():
                 huts_with_availability = huts_with_availability[
                     huts_with_availability["available_spaces"] > min_avail_spaces
                 ]
-                return jsonify({'status': 'success', 'markers': table_to_dict(huts_with_availability)})
+                return jsonify({"status": "success", "markers": table_to_dict(huts_with_availability)})
 
             # load availability (cannot preload it because it is updated daily)
             availability = pd.read_csv(AVAIL_PATH)
@@ -157,8 +159,9 @@ def submit():
             return render_template(
                 "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
             )
-        else:            
-            return jsonify({'status': 'success', 'markers': table_to_dict(filtered_huts)})
+        else:
+            return jsonify({"status": "success", "markers": table_to_dict(filtered_huts)})
+
 
 if __name__ == "__main__":
     # app.run(host="0.0.0.0")
