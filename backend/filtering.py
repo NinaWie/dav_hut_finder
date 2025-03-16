@@ -1,13 +1,15 @@
-import numpy as np
-from haversine import haversine
+"""filtering.py implements functions to filter huts by user input."""
+
 import geopandas as gpd
+import numpy as np
 import pandas as pd
+from haversine import haversine
 
 
 def filter_huts(
     huts: gpd.GeoDataFrame,
-    start_lat=None,
-    start_lon=None,
+    start_lat: float = None,
+    start_lon: float = None,
     min_distance: int = 0,
     max_distance: int = np.inf,
     min_altitude: int = 0,
@@ -15,12 +17,36 @@ def filter_huts(
     min_places: int = 0,
     max_places: int = np.inf,
     verbose: bool = False,
-    **kwargs,
-):
-    """Filter huts by distance, altitude, and number of places."""
+) -> gpd.GeoDataFrame:
+    """
+    Filter huts by user input.
 
-    def comp_haversine(row):
-        """Computes beeline distance in km."""
+    Args:
+        huts: gpd.GeoDataFrame containing all hut information
+        start_lat: starting latitude
+        start_lon: starting longitude
+        min_distance: minimum distance to next hut
+        max_distance: maximum distance to next hut
+        min_altitude: minimum altitude of huts
+        max_altitude: maximum altitude of huts
+        min_places: minimum number of spaces in the hut
+        max_places: maximum number of spaces in the hut (e.g. for avoiding very large huts)
+        verbose: verbose debug output
+
+    Returns:
+       gpd.GeoDataFrame containing filtered huts
+    """
+
+    def comp_haversine(row: gpd.GeoDataFrame) -> float:
+        """
+        Computes beeline distance in km.
+
+        Args:
+            row: gpd.GeoDataFrame
+
+        Return:
+            floating point distance
+        """
         return haversine((row["latitude"], row["longitude"]), (start_lat, start_lon))
 
     if min_distance > 0 or max_distance < np.inf:
@@ -47,4 +73,5 @@ def filter_huts(
             print(len(huts_filtered), "left after distance filtering (initially", len(huts))
     else:
         huts_filtered["distance"] = pd.NA
+
     return huts_filtered

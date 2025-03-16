@@ -2,8 +2,10 @@
 *.keypair
 backend/data/raw/
 backend/outputs/
+old_data/
 hut_*
 db_login.json
+!hut_finder
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -129,7 +131,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
