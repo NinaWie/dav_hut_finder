@@ -147,6 +147,11 @@ for hut_id in range(1, 673):
     ]
     update_hut_availability(result_for_hut_tuple)
 
+    if hut_id % 10 == 0:
+        # Save the huts that are not in system
+        with open(os.path.join("data", "not_in_system.json"), "w") as outfile:
+            json.dump(huts_not_in_system, outfile)
+
     if SAVE_TO_CSV:
         # Saving as csv
         # add to dataframe
@@ -165,6 +170,7 @@ checker.quit()
 # Save the huts that are not in system
 with open(os.path.join("data", "not_in_system.json"), "w") as outfile:
     json.dump(huts_not_in_system, outfile)
+
 
 if SAVE_TO_CSV:
     all_avail = pd.concat(all_avail)
