@@ -173,7 +173,7 @@ def submit():
 
     # get inputs for checking date availability (need to convert to datetime and back for correct format)
     check_date_str = data.get("date", None)
-    min_avail_spaces = int(data.get("minSpaces", 1))
+    # min_avail_spaces = int(data.get("minSpaces", 1))
 
     # filter huts by distance from start etc
     filtered_huts = filter_huts(huts, **filter_attributes)
@@ -197,8 +197,9 @@ def submit():
         # # sum up availability for all room types
         # availability = availability.groupby("id")["available_spaces"].sum().reset_index()
 
-        available_huts = availability[availability["places_avail"] >= min_avail_spaces]
-        huts_filtered_and_available = filtered_huts.merge(available_huts, left_on="id", right_on="hut_id", how="inner")
+        huts_filtered_and_available = filtered_huts.merge(
+            availability, left_on="id", right_on="hut_id", how="left"
+        ).fillna(-1)
         # huts_filtered_and_available = filtered_huts[filtered_huts["id"].isin(available_huts["hut_id"])]
         return jsonify({"status": "success", "markers": table_to_dict(huts_filtered_and_available)})
 
