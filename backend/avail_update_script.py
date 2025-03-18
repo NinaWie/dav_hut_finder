@@ -36,6 +36,7 @@ DB_LOGIN_PATH = "db_login.json"
 SKIP_NOT_IN_SYSTEM = True
 PATH_NOT_IN_SYSTEM = os.path.join("data", "not_in_system.json")
 DAYS_TO_PROCESS = 31 * 8
+SAVE_TO_CSV = False
 
 # Set up database connection
 with open(DB_LOGIN_PATH, "r") as infile:
@@ -123,7 +124,11 @@ for hut_id in range(1, 673):
         result_for_hut, status = checker.retrieve_from_calendar(hut_id, num_months=DAYS_TO_PROCESS // 31)
     except Exception as e:
         checker.quit()
+        del checker
         logger.error(f"Uncaught error! {e}")
+        time.sleep(10)  # sleep 10 seconds to recover
+        checker = AvailabilityChecker()  # reinitialize checker
+        logger.info("Reinstated checker, continuing...")
         continue
 
     # check if an error was returned
@@ -142,37 +147,38 @@ for hut_id in range(1, 673):
     ]
     update_hut_availability(result_for_hut_tuple)
 
-    # add to dataframe
-    result_for_hut_df = pd.DataFrame(result_for_hut, index=[hut_id])
-    all_avail.append(result_for_hut_df)
+    if SAVE_TO_CSV:
+        # Saving as csv
+        # add to dataframe
+        result_for_hut_df = pd.DataFrame(result_for_hut, index=[hut_id])
+        all_avail.append(result_for_hut_df)
 
-    # Add to availability csv and save
-    pd.concat(all_avail).to_csv(os.path.join("availability.csv"))
+        # Add to availability csv and save
+        pd.concat(all_avail).to_csv(os.path.join("availability.csv"))
 
     logger.info(f"Time for hut {hut_id}: {time.time() - tic}")
 
 logger.info(f"Total runtime {time.time() - tic_start}")
+# quit checker
+checker.quit()
 
 # Save the huts that are not in system
 with open(os.path.join("data", "not_in_system.json"), "w") as outfile:
     json.dump(huts_not_in_system, outfile)
 
-all_avail = pd.concat(all_avail)
+if SAVE_TO_CSV:
+    all_avail = pd.concat(all_avail)
+    # sort the dates (previously unsorted)
+    final_avail_table = all_avail[
+        sorted(
+            all_avail.columns,
+            key=lambda x: datetime.datetime(int(x.split(".")[2]), int(x.split(".")[1]), int(x.split(".")[0])),
+        )
+    ]
+    # save to csv
+    final_avail_table.index.name = "id"
+    final_avail_table.to_csv(os.path.join("availability.csv"))
 
-# sort the dates (previously unsorted)
-final_avail_table = all_avail[
-    sorted(
-        all_avail.columns,
-        key=lambda x: datetime.datetime(int(x.split(".")[2]), int(x.split(".")[1]), int(x.split(".")[0])),
-    )
-]
-# save to csv
-final_avail_table.index.name = "id"
-final_avail_table.to_csv(os.path.join("availability.csv"))
-
-# transform to int (remove error messages)
-final_avail_int = final_avail_table.applymap(convert_non_int_to_zero).reset_index().sort_values("id")
-final_avail_int.to_csv(os.path.join("availability_int.csv"))
-
-# write full table to database
-final_avail_int.set_index("id").to_sql("hut_availability_all", engine, if_exists="replace")
+    # transform to int (remove error messages)
+    final_avail_int = final_avail_table.applymap(convert_non_int_to_zero).reset_index().sort_values("id")
+    final_avail_int.to_csv(os.path.join("availability_int.csv"))
