@@ -40,6 +40,10 @@ class AvailabilityChecker:
         self.wait = WebDriverWait(self.driver, 3)
         logger.info("Initialized Checked")
 
+    def quit(self):
+        """Quit driver."""
+        self.driver.quit()
+
     def __call__(self, hut_id: int, start_date: datetime.date, end_date: datetime.date) -> dict:
         """
         Callable function of AvailabilityChecker that performs scraping.
@@ -188,6 +192,78 @@ class AvailabilityChecker:
 
         return avail_on_date, "Success"
 
+    def retrieve_from_calendar(self, hut_id: int, num_months: int = 8):
+        """
+        Retrieve availability from the calendar.
+
+        Args:
+            hut_id: hut id that is used to check BASE_URL + hut_id
+            num_months: how many months to process
+
+        Returns:
+            pd.DataFrame containing availability info
+            status (whether the request was successful)
+
+        """
+        # get url for this hut
+        url = self.base_url + str(hut_id) + "/wizard"
+        self.driver.get(url)
+
+        # click on calendar
+        try:
+            calendar_button = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable((By.ID, "cy-datePicker__toggle"))
+            )
+            calendar_button.click()
+        except TimeoutException:
+            logger.info("Hut not found (no calendar), break")
+            return None, "Error: Not in system!"
+
+        # initialize result
+        avail_on_date = {}
+
+        for month in range(num_months):
+            # Wait for the calendar to load
+            self.wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "mat-calendar-body-cell-content")))
+
+            # Extract calendar data
+            calendar_cells = self.driver.find_elements(By.CLASS_NAME, "mat-calendar-body-cell-content")
+
+            for i, cell in enumerate(calendar_cells):
+                date_number_text = cell.text.strip()
+
+                if i == 0:
+                    date_text = (
+                        cell.find_element(By.XPATH, "//button[contains(@class, 'custom-date')]")
+                        .get_attribute("class")
+                        .split("custom-date ")[-1]
+                    )
+                else:
+                    date_text = date_number_text.zfill(2) + date_text[2:]
+
+                try:
+                    availability_count_cell = cell.find_element(
+                        By.XPATH, "./following-sibling::div[contains(@class, 'custom-preview')]"
+                    )
+                    availability_count = availability_count_cell.text.strip()
+
+                except Exception:
+                    availability_count = -1
+
+                # save in dictionary
+                avail_on_date[date_text] = availability_count
+
+                logger.debug(f"{date_text}: {availability_count}")
+
+            if month < num_months - 1:
+                # Click the 'Next month' button
+                next_month_button = next_month_button = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='Next month']"))
+                )
+                next_month_button.click()
+
+        return avail_on_date, "Success"
+
     def wait_for_table_update(self, old_html: Any):
         """Wait until the table content changes compared to the previous iteration."""
         # Wait until the table content changes compared to the previous iteration
@@ -209,7 +285,7 @@ class AvailabilityChecker:
         """Load preamble text from the page."""
         try:
             # Locate all preamble sections (multiple spans)
-            preamble_elements = WebDriverWait(self.driver, 2).until(
+            preamble_elements = self.wait.until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "app-check-availability-step .welcomeMessage"))
             )
 

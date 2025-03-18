@@ -35,6 +35,7 @@ def convert_non_int_to_zero(x: str) -> int:
 DB_LOGIN_PATH = "db_login.json"
 SKIP_NOT_IN_SYSTEM = True
 PATH_NOT_IN_SYSTEM = os.path.join("data", "not_in_system.json")
+DAYS_TO_PROCESS = 31 * 8
 
 # Set up database connection
 with open(DB_LOGIN_PATH, "r") as infile:
@@ -93,7 +94,7 @@ checker = AvailabilityChecker()
 today = datetime.datetime.today()
 today_date = today.date()
 start_date = today
-end_date = today + datetime.timedelta(days=120)  # NOTE: need to decide what to set this to
+end_date = today + datetime.timedelta(days=DAYS_TO_PROCESS)
 
 tic_start = time.time()
 
@@ -118,8 +119,10 @@ for hut_id in range(1, 673):
 
     # call availability checker
     try:
-        result_for_hut, status = checker(hut_id, start_date, end_date)
+        # result_for_hut, status = checker(hut_id, start_date, end_date)
+        result_for_hut, status = checker.retrieve_from_calendar(hut_id, num_months=DAYS_TO_PROCESS // 31)
     except Exception as e:
+        checker.quit()
         logger.error(f"Uncaught error! {e}")
         continue
 
@@ -135,7 +138,7 @@ for hut_id in range(1, 673):
     result_for_hut_tuple = [
         (hut_id, date, int(places_avail), today_date)
         for date, places_avail in result_for_hut.items()
-        if places_avail.isdigit()
+        if isinstance(places_avail, int) or places_avail.isdigit()
     ]
     update_hut_availability(result_for_hut_tuple)
 
