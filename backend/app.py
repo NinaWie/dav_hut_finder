@@ -197,9 +197,11 @@ def submit():
         # # sum up availability for all room types
         # availability = availability.groupby("id")["available_spaces"].sum().reset_index()
 
-        huts_filtered_and_available = filtered_huts.merge(
-            availability, left_on="id", right_on="hut_id", how="left"
-        ).fillna(-1)
+        # add places_avail column to filtered huts
+        huts_filtered_and_available = filtered_huts.merge(availability, left_on="id", right_on="hut_id", how="left")
+        # fill nans
+        huts_filtered_and_available["places_avail"] = huts_filtered_and_available["places_avail"].fillna(-1)
+        huts_filtered_and_available = huts_filtered_and_available.fillna("-")
         # huts_filtered_and_available = filtered_huts[filtered_huts["id"].isin(available_huts["hut_id"])]
         return jsonify({"status": "success", "markers": table_to_dict(huts_filtered_and_available)})
 

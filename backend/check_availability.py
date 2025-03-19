@@ -3,6 +3,7 @@
 import datetime
 import logging
 import os
+import time
 from typing import Any, Text
 
 import numpy as np
@@ -214,6 +215,8 @@ class AvailabilityChecker:
             calendar_button = WebDriverWait(self.driver, 5).until(
                 EC.element_to_be_clickable((By.ID, "cy-datePicker__toggle"))
             )
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", calendar_button)
+            time.sleep(1)
             calendar_button.click()
         except TimeoutException:
             logger.info("Hut not found (no calendar), break")

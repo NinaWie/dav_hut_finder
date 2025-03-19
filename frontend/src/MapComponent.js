@@ -33,12 +33,13 @@ const ClickableMap = ({ handleMapClick }) => {
   return null;
 };
 
-const getMarkerColor = (placesAvail) => {
-  if (!placesAvail) return 'blue';         // No data or unknown availability
-  if (placesAvail >= 10) return 'green';   // Plenty of spaces
-  if (placesAvail > 0) return 'orange';   // Limited availability
-  if (placesAvail == 0) return 'red';       // full
-  return 'grey';                        // Fully booked or unavailable
+const getMarkerColor = (placesAvail, minSpaces) => {
+  minSpaces = Number(minSpaces);
+  if (placesAvail < 0) return 'grey';         // No data or unknown availability
+  if (placesAvail >= minSpaces + 5) return 'green';   // Plenty of spaces
+  if (placesAvail >= minSpaces) return 'orange';   // Limited availability
+  if (placesAvail < minSpaces) return 'red';       // full
+  return 'blue';                        // Fully booked or unavailable
 };
 
 const createCustomMarker = (color) => {
@@ -53,7 +54,7 @@ const createCustomMarker = (color) => {
 };
 
 
-const MapComponent = ({ markers, handleMapClick }) => {
+const MapComponent = ({ markers, handleMapClick, minSpaces }) => {
   // Set default position for the personIcon on map load
   const [markerPosition, setMarkerPosition] = useState({
     lat: 47.170598236405986,
@@ -68,7 +69,7 @@ const MapComponent = ({ markers, handleMapClick }) => {
       />
 
       {markers.map((marker) => {
-          const markerColor = getMarkerColor(marker.places_avail);  // Define color logic
+          const markerColor = getMarkerColor(marker.places_avail, minSpaces);  // Define color logic
           const customIcon = createCustomMarker(markerColor);
 
           return (
@@ -85,10 +86,10 @@ const MapComponent = ({ markers, handleMapClick }) => {
                       Entfernung: {marker.distance} km
                       <br />
                       Verein: {marker.verein}
-                      {marker.places_avail && (
+                      {marker.places_avail !== undefined && (
                           <>
                               <br />
-                              Available Beds: {marker.places_avail}
+                              Available Beds: {marker.places_avail < 0 ? 'N/A' : marker.places_avail}
                           </>
                       )}
                   </Popup>

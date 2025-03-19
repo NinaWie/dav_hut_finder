@@ -88,7 +88,7 @@ function App() {
           onSubmit={handleFormSubmit}
           filterByDate={filterByDate} // NEW: Pass checkbox state
         />
-        <MapComponent setCoordinates={setCoordinates} markers={markers} handleMapClick={handleMapClick} />
+        <MapComponent setCoordinates={setCoordinates} markers={markers} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} />
       </div>
 
       <Dialog open={openWelcomeDialog} onClose={handleCloseWelcomeDialog}>
