@@ -92,6 +92,20 @@ const MapComponent = ({ markers, handleMapClick, minSpaces }) => {
                               Available Beds: {marker.places_avail < 0 ? 'N/A' : marker.places_avail}
                           </>
                       )}
+                      {marker.link && (
+                          <>
+                              <br />
+                              <a
+                                  href={marker.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: 'blue', textDecoration: 'underline' }}
+                              >
+                                  Book here
+                              </a>
+                          </>
+                      )}
+
                   </Popup>
               </Marker>
           );

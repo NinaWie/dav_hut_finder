@@ -177,6 +177,10 @@ def submit():
 
     # filter huts by distance from start etc
     filtered_huts = filter_huts(huts, **filter_attributes)
+    filtered_huts["link"] = filtered_huts["id"].apply(
+        lambda x: f"https://www.hut-reservation.org/reservation/book-hut/{x}/wizard"
+    )
+    filtered_huts["verein"] = filtered_huts["verein"].fillna("-")
 
     # filter by availability
     if check_date_str is not None:
