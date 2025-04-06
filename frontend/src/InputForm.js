@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TextField, Button, Box, FormControlLabel, Checkbox } from '@mui/material';
+import { Slider, Typography, TextField, Button, Box, FormControlLabel, Checkbox } from '@mui/material';
 import './InputForm.css';
 
 const InputForm = ({ formData, setFormData, onSubmit }) => {
@@ -15,6 +15,17 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
     setLocalFormData((prevData) => ({
       ...prevData,
       [name]: value
+    }));
+  };
+  const handleSliderChange = (event, newValue, name) => {
+    const [min, max] = newValue; // Extract the min and max values from the range
+
+    setLocalFormData((prevData) => ({
+      ...prevData,
+      minDistance: name === "distanceRange" ? min : prevData.minDistance,
+      maxDistance: name === "distanceRange" ? max : prevData.maxDistance,
+      minAltitude: name === "altitudeRange" ? min : prevData.minAltitude,
+      maxAltitude: name === "altitudeRange" ? max : prevData.maxAltitude,
     }));
   };
 
@@ -40,17 +51,45 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
 
   return (
     <form onSubmit={handleSubmit} className="input-form">
-      <Box display="flex" flexDirection="row" flexWrap="nowrap" gap={2}>
-        <TextField label="Longitude" type="number" step="any" name="longitude" value={localFormData.longitude} onChange={handleChange} required />
-        <TextField label="Latitude" type="number" step="any" name="latitude" value={localFormData.latitude} onChange={handleChange} required />
-        <TextField label="Minimal Distance" type="number" step="any" name="minDistance" value={localFormData.minDistance} onChange={handleChange} required />
-        <TextField label="Maximal Distance" type="number" step="any" name="maxDistance" value={localFormData.maxDistance} onChange={handleChange} required />
-        <TextField label="Minimal Altitude" type="number" step="any" name="minAltitude" value={localFormData.minAltitude} onChange={handleChange} required />
-        <TextField label="Maximal Altitude" type="number" step="any" name="maxAltitude" value={localFormData.maxAltitude} onChange={handleChange} required />
+      <Box display="flex" flexDirection="row" gap={3} p={2}>
+
+      <Box display="flex" flexDirection="column" gap={3} p={2}>
+      <Typography variant="h6">Filter by Distance & Altitude</Typography>
+
+        {/* Distance Range Slider */}
+        <Box>
+          <Typography gutterBottom>
+            Distance from position: {localFormData.minDistance} km - {localFormData.maxDistance} km
+          </Typography>
+          <Slider
+            value={[localFormData.minDistance, localFormData.maxDistance]}
+            onChange={(e, value) => handleSliderChange(e, value, "distanceRange")}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(value) => `${value} km`}
+            min={0}
+            max={500} // Global max range for distance
+            step={1}
+          />
+
+        {/* Altitude Range Slider */}
+          <Typography gutterBottom>
+            Altitude range: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
+          </Typography>
+          <Slider
+            value={[localFormData.minAltitude, localFormData.maxAltitude]}
+            onChange={(e, value) => handleSliderChange(e, value, "altitudeRange")}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(value) => `${value} m`}
+            min={0}
+            max={4000} // Global max range for altitude
+            step={10}
+          />
+        </Box>
       </Box>
 
-      {/* New "Filter by Availability" Section */}
-      <Box display="flex" flexDirection="column" gap={1} marginTop={2}>
+      {/* Filter by Availability" Section */}
+      <Box display="flex" flexDirection="column" gap={3} p={2}>
+        <Typography variant="h6">Filter by Availability</Typography>
         <FormControlLabel
           control={
             <Checkbox
@@ -60,7 +99,6 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
           }
           label="Filter by Date"
         />
-
         {filterByDate && (
           <Box display="flex" flexDirection="row" flexWrap="nowrap" gap={2}>
           <TextField
@@ -74,7 +112,7 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
             }}
           />
           <TextField
-            label="Required beds"
+            label="Minimal Spaces"
             type="number"
             name="minSpaces"
             value={localFormData.minSpaces}
@@ -82,12 +120,11 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
           />
           </Box>
         )}
-
-
       </Box>
 
+      </Box>
       <Button type="submit" variant="contained" color="primary" style={{ marginTop: '10px' }}>
-        Submit
+        Apply
       </Button>
     </form>
   );

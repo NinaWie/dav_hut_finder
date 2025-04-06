@@ -16,7 +16,7 @@ function App() {
     minDistance: '0',
     maxDistance: '500',
     minAltitude: '0',
-    maxAltitude: '5000',
+    maxAltitude: '4000',
     date: '',
     minSpaces: '1'
   });
