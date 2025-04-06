@@ -39,7 +39,7 @@ class AvailabilityChecker:
         self.driver = webdriver.Chrome(service=SERVICE, options=chrome_options)
         self.base_url = base_url
         self.wait = WebDriverWait(self.driver, 3)
-        logger.info("Initialized Checked")
+        logger.info("Initialized Checker")
 
     def quit(self):
         """Quit driver."""

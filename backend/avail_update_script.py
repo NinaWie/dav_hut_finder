@@ -10,6 +10,8 @@ import time
 import pandas as pd
 import psycopg2
 from psycopg2.extras import execute_values
+from slack import WebClient
+from slack.errors import SlackApiError
 from sqlalchemy import create_engine
 
 from check_availability import AvailabilityChecker
@@ -37,6 +39,7 @@ SKIP_NOT_IN_SYSTEM = True
 PATH_NOT_IN_SYSTEM = os.path.join("data", "not_in_system.json")
 DAYS_TO_PROCESS = 31 * 8
 SAVE_TO_CSV = False
+CLIENT = WebClient(token=os.environ["SLACK_TOKEN"])
 
 # Set up database connection
 with open(DB_LOGIN_PATH, "r") as infile:
@@ -88,6 +91,16 @@ def update_hut_availability(hut_data: tuple) -> None:
         logger.error(f"Database error: {e}")
 
 
+def post_to_slack(message: str) -> None:
+    """Post message to Slack channel."""
+    try:
+        CLIENT.chat_postMessage(channel="#hut-finder", text=message, username="PennyMe")
+    except SlackApiError as e:
+        assert e.response["ok"] is False
+        assert e.response["error"]
+        raise e
+
+
 # create driver for scraping
 checker = AvailabilityChecker()
 
@@ -107,6 +120,9 @@ else:
 
 # result lists
 all_avail = []
+total_errors, successful_updates = 0, 0
+
+post_to_slack("Starting availability check...")
 
 # iterate over huts
 for hut_id in range(1, 673):
@@ -129,6 +145,10 @@ for hut_id in range(1, 673):
         time.sleep(10)  # sleep 10 seconds to recover
         checker = AvailabilityChecker()  # reinitialize checker
         logger.info("Reinstated checker, continuing...")
+        total_errors += 1
+        if total_errors > 5:
+            logger.error("Too many errors, exiting...")
+            sys.exit(1)
         continue
 
     # check if an error was returned
@@ -146,6 +166,7 @@ for hut_id in range(1, 673):
         if isinstance(places_avail, int) or places_avail.isdigit()
     ]
     update_hut_availability(result_for_hut_tuple)
+    successful_updates += 1
 
     if hut_id % 10 == 0:
         # Save the huts that are not in system
@@ -166,6 +187,13 @@ for hut_id in range(1, 673):
 logger.info(f"Total runtime {time.time() - tic_start}")
 # quit checker
 checker.quit()
+
+post_to_slack(
+    f"Finished availability check! Total runtime: {time.time() - tic_start:.2f} seconds.\
+    \n{len(huts_not_in_system)} huts not in system.\
+    \nTotal errors: {total_errors}.\
+    \nTotal huts checked: {successful_updates}."
+)
 
 # Save the huts that are not in system
 with open(os.path.join("data", "not_in_system.json"), "w") as outfile:
