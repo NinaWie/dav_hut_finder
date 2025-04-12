@@ -74,7 +74,7 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
             }}
           />
           <TextField
-            label="Minimal Spaces"
+            label="Required beds"
             type="number"
             name="minSpaces"
             value={localFormData.minSpaces}

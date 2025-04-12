@@ -173,10 +173,14 @@ def submit():
 
     # get inputs for checking date availability (need to convert to datetime and back for correct format)
     check_date_str = data.get("date", None)
-    min_avail_spaces = int(data.get("minSpaces", 1))
+    # min_avail_spaces = int(data.get("minSpaces", 1))
 
     # filter huts by distance from start etc
     filtered_huts = filter_huts(huts, **filter_attributes)
+    filtered_huts["link"] = filtered_huts["id"].apply(
+        lambda x: f"https://www.hut-reservation.org/reservation/book-hut/{x}/wizard"
+    )
+    filtered_huts["verein"] = filtered_huts["verein"].fillna("-")
 
     # filter by availability
     if check_date_str is not None:
@@ -197,8 +201,11 @@ def submit():
         # # sum up availability for all room types
         # availability = availability.groupby("id")["available_spaces"].sum().reset_index()
 
-        available_huts = availability[availability["places_avail"] >= min_avail_spaces]
-        huts_filtered_and_available = filtered_huts.merge(available_huts, left_on="id", right_on="hut_id", how="inner")
+        # add places_avail column to filtered huts
+        huts_filtered_and_available = filtered_huts.merge(availability, left_on="id", right_on="hut_id", how="left")
+        # fill nans
+        huts_filtered_and_available["places_avail"] = huts_filtered_and_available["places_avail"].fillna(-1)
+        huts_filtered_and_available = huts_filtered_and_available.fillna("-")
         # huts_filtered_and_available = filtered_huts[filtered_huts["id"].isin(available_huts["hut_id"])]
         return jsonify({"status": "success", "markers": table_to_dict(huts_filtered_and_available)})
 

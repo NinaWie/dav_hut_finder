@@ -4,6 +4,8 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+// Fix Leaflet marker icons not displaying correctly in React apps
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 // Fix for missing default icon issue in Leaflet
 let DefaultIcon = L.icon({
@@ -31,7 +33,28 @@ const ClickableMap = ({ handleMapClick }) => {
   return null;
 };
 
-const MapComponent = ({ markers, handleMapClick }) => {
+const getMarkerColor = (placesAvail, minSpaces) => {
+  minSpaces = Number(minSpaces);
+  if (placesAvail < 0) return 'grey';         // No data or unknown availability
+  if (placesAvail >= minSpaces + 5) return 'green';   // Plenty of spaces
+  if (placesAvail >= minSpaces) return 'orange';   // Limited availability
+  if (placesAvail < minSpaces) return 'red';       // full
+  return 'blue';                        // Fully booked or unavailable
+};
+
+const createCustomMarker = (color) => {
+  return new L.Icon({
+      iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
+      iconSize: [25, 41],  // Default Leaflet marker size
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowUrl: markerShadow,
+      shadowSize: [41, 41]
+  });
+};
+
+
+const MapComponent = ({ markers, handleMapClick, minSpaces }) => {
   // Set default position for the personIcon on map load
   const [markerPosition, setMarkerPosition] = useState({
     lat: 47.170598236405986,
@@ -45,26 +68,49 @@ const MapComponent = ({ markers, handleMapClick }) => {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
 
-    {/* Render markers from the fetched data */}
-    {markers.map((marker) => (
-      <Marker key={marker.id} position={[marker.latitude, marker.longitude]}>
-        <Popup>
-          Hütte: {marker.name}
-          <br />
-          Höhe: {marker.altitude} meters
-          <br />
-          Entfernung: {marker.distance} km
-          <br />
-          Verein: {marker.verein}
-          {marker.places_avail && ( // Conditionally render Available Beds if 'minSpaces' exists
-            <>
-              <br />
-              Available Beds: {marker.places_avail}
-            </>
-          )}
-        </Popup>
-      </Marker>
-    ))}
+      {markers.map((marker) => {
+          const markerColor = getMarkerColor(marker.places_avail, minSpaces);  // Define color logic
+          const customIcon = createCustomMarker(markerColor);
+
+          return (
+              <Marker
+                  key={marker.id}
+                  position={[marker.latitude, marker.longitude]}
+                  icon={customIcon}  // Use custom pin-style icon
+              >
+                  <Popup>
+                      Hütte: {marker.name}
+                      <br />
+                      Höhe: {marker.altitude} meters
+                      <br />
+                      Entfernung: {marker.distance} km
+                      <br />
+                      Verein: {marker.verein}
+                      {marker.places_avail !== undefined && (
+                          <>
+                              <br />
+                              Available Beds: {marker.places_avail < 0 ? 'N/A' : marker.places_avail}
+                          </>
+                      )}
+                      {marker.link && (
+                          <>
+                              <br />
+                              <a
+                                  href={marker.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: 'blue', textDecoration: 'underline' }}
+                              >
+                                  Book here
+                              </a>
+                          </>
+                      )}
+
+                  </Popup>
+              </Marker>
+          );
+      })}
+
 
 
       {/* Render the personIcon at the clicked position */}
