@@ -2,7 +2,10 @@
 *.keypair
 backend/data/raw/
 backend/outputs/
+old_data/
 hut_*
+!hut_finder
+*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -128,7 +131,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
@@ -504,3 +506,5 @@ tags
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,pycharm,visualstudiocode,vim
 backend/data/availability.csv
+
+*.json

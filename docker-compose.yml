@@ -1,10 +1,58 @@
 services:
-  dev:
-    image: public_transport_airbnb
-    command: python backend/app.py
-    network_mode: host
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ${CADDYFILE}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+  dev_backend:
+    image: hutfinder/dev_backend
+    container_name: backend-dev
+    build: ./backend
+    env_file: .env
+    working_dir: /home/maeuschen/backend
     volumes:
       - ./backend:/home/maeuschen/backend
+      - ./db_login.json:/home/maeuschen/backend/db_login.json
+    command: flask --debug run
+  dev:
+    image: hutfinder/dev
+    container_name: frontend-dev
+    build: ./frontend
+    depends_on:
+      - dev_backend
+      - caddy
+    working_dir: /home/maeuschen/frontend
+    volumes:
       - ./frontend:/home/maeuschen/frontend
-    ports:
-      - "8989:8989"
+      - frontend_node_modules:/home/maeuschen/frontend/node_modules
+    command: npm start
+  prod_backend:
+    image: hutfinder/prod_backend
+    container_name: backend-prod
+    env_file: .env
+    build: ./backend
+    working_dir: /home/maeuschen/backend
+    volumes:
+      - ./backend:/home/maeuschen/backend
+      - ./db_login.json:/home/maeuschen/backend/db_login.json
+    command: waitress-serve --port=5000 app:app
+  prod:
+    image: hutfinder/prod
+    container_name: frontend-prod
+    build: ./frontend
+    depends_on:
+      - prod_backend
+      - caddy
+    working_dir: /home/maeuschen/frontend
+    command: npm start prod
+
+volumes:
+  caddy_data:
+  caddy_config:
+  frontend_node_modules:

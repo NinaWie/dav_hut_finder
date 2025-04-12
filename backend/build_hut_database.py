@@ -1,12 +1,13 @@
-import requests
 import json
-import pandas as pd
-from bs4 import BeautifulSoup
 import os
-import googlemaps
-from typing import Tuple
-from googlemaps import Client as GoogleMaps
+from typing import Text, Tuple
+
 import geopandas as gpd
+import googlemaps
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+from googlemaps import Client as GoogleMaps
 
 PLACES_CODE = "total sleeping places: "
 WARDEN_CODE = "hut warden(s): "
@@ -52,7 +53,7 @@ def get_coordinates(title: str, api: googlemaps.client.Client) -> Tuple[float, f
     return lat, lng
 
 
-def find_verein(hut):
+def find_verein(hut: Text) -> Tuple:
     found_verein = False
     for verein in ALPENVEREIN_SHORTCUTS:
         name_and_verein = hut.split(verein)
@@ -136,25 +137,47 @@ def call_maps_api(row):
     return row
 
 
-def get_alt_meter(alt):
+def get_alt_meter(alt: Text) -> int:
+    """
+    Retrieve altitude from NNNNm csv column.
+
+    Args:
+        alt: altitude csv column test in format NNNNm
+
+    Returns:
+        alt_int: altitude converted to int
+    """
+
     try:
         alt_int = float(alt.replace("m", ""))
-    except ValueError or AttributeError:
+    except ValueError:
+        alt_int = pd.NA
+    except AttributeError:
         alt_int = pd.NA
     return alt_int
 
 
-def get_places_cleaned(places):
+def get_places_cleaned(places: Text) -> int:
+    """
+    Clean places column and try to convert to int.
+
+    Args:
+        places: place text from csv
+
+    Returns:
+        places_int: places column as int
+    """
+
     try:
         places_int = int(places)
-    except:
+    except ValueError:
         parts = places.split(" ")
         places_int = 10
         for p in parts:
             try:
                 places_int = int(p)
                 break
-            except:
+            except ValueError:
                 continue
     return places_int
 

@@ -5,24 +5,8 @@ Filter huts in the alps by
 * Public transport accessibility
 * Available places at a specific date
 
-## Installation:
-
-Download repo and install all dependencies into a conda environment with the following:
-
-```
-git clone https://github.com/NinaWie/dav_hut_finder 
-cd dav_hut_finder 
-conda create -n dav_env
-conda activate dav_env
-cd backend
-pip install -e .
-```
-
-or simply build with Docker
-
-```
-docker build -t dav_hut_finder .
-```
+![](./doc/1.png)
+![](./doc/2.png)
 
 ## Development
 
@@ -33,25 +17,9 @@ docker build -t dav_hut_finder .
 ### Docker
 
 ```
-docker build -t dav_hut_finder .
-docker compose up
+CADDYFILE=./dev.Caddyfile docker compose up dev --build
 ```
 
-Open your browser at `http://localhost:8989/`
+Open your browser at `hutfinder.localhost`
 
-The compose file mounts the correct files so hot reloading works without re-building.
-
-## Flask demo
-
-Simple flask demo already works, to test it, run
-```
-cd backend
-python app.py
-```
-Open the index.html (folder `frontend`) in a browser and test by inputting latitude and longitude and pressing the button.
-
-## Next steps
-
-* Find out how to efficiently download PT stations -> see [notebook](backend/airbnb_project.ipynb)
-* Compute distance of huts from closest PT station -> best with spatial join in [geopandas](https://geopandas.org/en/stable/gallery/spatial_joins.html). The huts are already available in geojson format in our [database](backend/data/huts_database.geojson) which can be loaded via `gpd.read_file(file_path, driver="GeoJSON")`.
-* Set up basic web app with map
+**Note:** `/etc/hosts` must include `127.0.0.1 hutfinder.localhost`
