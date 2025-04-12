@@ -5,6 +5,9 @@ Filter huts in the alps by
 * Public transport accessibility
 * Available places at a specific date
 
+![](./doc/1.png)
+![](./doc/2.png)
+
 ## Development
 
 * work on `develop` branch by default
