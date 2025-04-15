@@ -14,7 +14,7 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS, cross_origin
 from sqlalchemy import create_engine
 
-from filtering import filter_huts
+from .filtering import filter_huts, multi_day_route_finding
 
 app = Flask(__name__, static_folder="static")
 
@@ -45,14 +45,19 @@ except sqlalchemy.exc.OperationalError as err:
 
 # load huts database
 huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
+id_to_hut_name = huts.set_index("id")["name"].to_dict()
 
 
-def get_availability_for_date(date: str = "*") -> pd.DataFrame:
+def get_availability_for_dates(dates: list, min_places: int = 1) -> pd.DataFrame:
     """Get table with number of available places for each hut on a given date."""
     # create engine
     engine = create_engine("postgresql+psycopg2://", creator=get_con)
     # load availability
-    availability = pd.read_sql(f"SELECT hut_id, date, places_avail FROM hut_availability WHERE date='{date}'", engine)
+    date_str = "date='" + "' OR date='".join(dates) + "'"
+    availability = pd.read_sql(
+        f"SELECT hut_id, date, places_avail FROM hut_availability WHERE places_avail>={min_places} AND ({date_str})",
+        engine,
+    )
     return availability
 
 
@@ -189,7 +194,7 @@ def submit():
         check_date = check_date_datetime.strftime("%d.%m.%Y")
 
         # load availability (cannot preload it because it is updated daily)
-        availability = get_availability_for_date(check_date)
+        availability = get_availability_for_dates([check_date])
 
         if DEBUG:
             return availability_as_html(availability, filtered_huts)
@@ -216,6 +221,59 @@ def submit():
                 "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
             )
         return jsonify({"status": "success", "markers": table_to_dict(filtered_huts)})
+
+
+@app.route("/api/multi_day", methods=["POST"])
+def multi_day_planning():
+    """Handle multi-day planning request."""
+    data = request.json
+
+    # Convert strings to floats and date string to datetime object
+    filter_attributes = {
+        "start_lat": float(data["latitude"]),
+        "start_lon": float(data["longitude"]),
+        "min_distance": float(data["minDistance"]),
+        "max_distance": float(data["maxDistance"]),
+        "min_altitude": float(data["minAltitude"]),
+        "max_altitude": float(data["maxAltitude"]),
+    }
+    # construct list of dates
+    date_list = [data["date1"], data["date2"], data["date3"], data["date4"], data["date5"]]
+    date_list = [d for d in date_list if d is not None]
+    assert len(date_list) > 1, "There must be at least two dates for multi-day planning"
+
+    # get availability for all dates
+    availability_from_database = get_availability_for_dates(date_list, int(data["minSpaces"]))
+    avail_per_date = availability_from_database.pivot(index="hut_id", columns="date", values="places_avail")
+
+    # filter huts by distance from start etc
+    filtered_hut_ids = filter_huts(huts, **filter_attributes)["id"]
+    avail_per_date = avail_per_date[avail_per_date.index.isin(filtered_hut_ids)]
+
+    # load feasible connections - NOTE: preload this to speed up the process
+    feasible_connections = pd.read_csv(os.path.join("data", "feasible_connections.csv"), index_col="id_source")
+
+    # compute trip options
+    trip_options = multi_day_route_finding(date_list, feasible_connections, avail_per_date, id_to_hut_name)
+
+    # convert to dicts
+    huts_with_id = huts.set_index("id")
+    nr_days = len(date_list)
+    json_dicts = []
+    for _, row in trip_options.iterrows():
+        # make list of coordinates
+        coordinates = [
+            [huts_with_id.loc[row[f"day{k}"], "latitude"], huts_with_id.loc[row[f"day{k}"], "longitude"]]
+            for k in range(nr_days)
+        ]
+        # combine names, places and distances
+        infos = " -> ".join(
+            [row[f"name_day{k}"] + "(" + str(int(row[f"places_day{k}"])) + " spots)" for k in range(nr_days)]
+        )
+        dist = ", ".join([str(round(row[f"distance_day{k}"] / 1000, 2)) + " km" for k in range(1, nr_days)])
+        json_dicts.append({"infos": infos, "coordinates": coordinates, "distance": dist})
+
+    return jsonify({"status": "success", "polylines": json_dicts})
 
 
 def create_app():

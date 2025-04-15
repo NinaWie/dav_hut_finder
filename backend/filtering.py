@@ -75,3 +75,54 @@ def filter_huts(
         huts_filtered["distance"] = pd.NA
 
     return huts_filtered
+
+
+def multi_day_route_finding(
+    date_list: list[str],
+    feasible_connections: pd.DataFrame,
+    avail_per_date: pd.DataFrame,
+    id_to_hut: dict,
+    require_unique_huts: bool = True,
+) -> pd.DataFrame:
+    """Find all possible combinations of huts for multiple days."""
+    col_names, trip_options = [], pd.DataFrame()
+    for i, current_date in enumerate(date_list):
+        # collect column names for sorting them in the end
+        col_names.extend([f"day{i}", f"name_day{i}", f"places_day{i}"])
+
+        # filter for availability on this date
+        avail_current_day = avail_per_date[[current_date]].dropna().rename({current_date: f"places_day{i}"}, axis=1)
+        # print(f"Avail on day {i}: {len(avail_current_day)}")
+
+        avail_current_day[f"name_day{i}"] = id_to_hut
+
+        # for last hut: special case, just filter availability, then stop
+        if i == len(date_list) - 1:
+            trip_options = trip_options.merge(avail_current_day, how="inner", left_on=f"day{i}", right_index=True)
+            break
+
+        # check what options we have in general to go to the next hut
+        options_to_next_day = avail_current_day.merge(
+            feasible_connections, how="inner", left_index=True, right_index=True
+        ).reset_index(names=f"day{i}")
+
+        # print(f"Options for transfer from {i} to {i+1}: {len(options_to_next_day)}")
+
+        # merge with overall result
+        if i == 0:
+            trip_options = options_to_next_day
+        else:
+            trip_options = options_to_next_day.merge(trip_options, left_on=f"day{i}", right_on=f"day{i}", how="inner")
+
+        # rename columns
+        trip_options.rename({"id_target": f"day{i+1}", "distance": f"distance_day{i+1}"}, axis=1, inplace=True)
+        col_names.append(f"distance_day{i+1}")
+        # print(f"Total options after day {i}: {len(trip_options)}")
+    trip_options = trip_options[col_names]
+
+    if require_unique_huts:
+        trip_options = trip_options[
+            trip_options[[c for c in col_names if c.startswith("day")]].nunique(axis=1) == len(date_list)
+        ]
+
+    return trip_options
