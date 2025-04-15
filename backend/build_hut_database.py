@@ -1,7 +1,8 @@
 import json
 import os
 from typing import Text, Tuple
-
+import numpy as np
+from scipy.spatial.distance import cdist
 import geopandas as gpd
 import googlemaps
 import pandas as pd
@@ -191,6 +192,27 @@ def clean_huts(inp_path, out_path):
     huts_gdf_clean.to_file(out_path, driver="GeoJSON")
 
 
+def save_feasible_connections(max_distance: int = 10000):
+    """Generate all feasible connections between huts and save to csv."""
+    huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
+    huts.to_crs(2421, inplace=True)
+    hut_coords = np.stack([huts.geometry.x, huts.geometry.y]).T
+    pairwise_dist = cdist(hut_coords, hut_coords)
+
+    # create a mask for the distances
+    is_connected = (pairwise_dist <= max_distance) & (pairwise_dist > 0)
+    ids = huts["id"].values
+    # iterate over combinations and add them to df
+    combs = []
+    nr_huts = len(is_connected)
+    for i in range(nr_huts):
+        for j in range(nr_huts):
+            if is_connected[i, j]:
+                combs.append({"id_source": ids[i], "id_target": ids[j], "distance": int(pairwise_dist[i, j])})
+    feasible_connections = pd.DataFrame(combs).set_index("id_source")
+    feasible_connections.to_csv(os.path.join("data", "feasible_connections.csv"))
+
+
 if __name__ == "__main__":
     # set paths
     raw_out_path = os.path.join(DATA_PATH, "raw")
@@ -218,3 +240,6 @@ if __name__ == "__main__":
 
     # clean ups
     clean_huts(hut_coord_geojson, hut_final_cleaned)
+
+    # save feasible connections
+    save_feasible_connections()
