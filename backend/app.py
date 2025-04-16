@@ -14,7 +14,7 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS, cross_origin
 from sqlalchemy import create_engine
 
-from .filtering import filter_huts, multi_day_route_finding
+from filtering import DATE_FORMAT_IN, DATE_FORMAT_OUT, filter_huts, generate_date_range, multi_day_route_finding
 
 app = Flask(__name__, static_folder="static")
 
@@ -190,8 +190,8 @@ def submit():
     # filter by availability
     if check_date_str is not None:
         # transform check date
-        check_date_datetime = datetime.strptime(check_date_str, "%Y-%m-%d")
-        check_date = check_date_datetime.strftime("%d.%m.%Y")
+        check_date_datetime = datetime.strptime(check_date_str, DATE_FORMAT_IN)
+        check_date = check_date_datetime.strftime(DATE_FORMAT_OUT)
 
         # load availability (cannot preload it because it is updated daily)
         availability = get_availability_for_dates([check_date])
@@ -238,8 +238,8 @@ def multi_day_planning():
         "max_altitude": float(data["maxAltitude"]),
     }
     # construct list of dates
-    date_list = [data["date1"], data["date2"], data["date3"], data["date4"], data["date5"]]
-    date_list = [d for d in date_list if d is not None]
+    date_list = generate_date_range(data["startDate"], data["endDate"])
+    nr_days = len(date_list)
     assert len(date_list) > 1, "There must be at least two dates for multi-day planning"
 
     # get availability for all dates
@@ -247,7 +247,8 @@ def multi_day_planning():
     avail_per_date = availability_from_database.pivot(index="hut_id", columns="date", values="places_avail")
 
     # filter huts by distance from start etc
-    filtered_hut_ids = filter_huts(huts, **filter_attributes)["id"]
+    filtered_huts = filter_huts(huts, **filter_attributes)
+    filtered_hut_ids = filtered_huts["id"]
     avail_per_date = avail_per_date[avail_per_date.index.isin(filtered_hut_ids)]
 
     # load feasible connections - NOTE: preload this to speed up the process
@@ -256,9 +257,13 @@ def multi_day_planning():
     # compute trip options
     trip_options = multi_day_route_finding(date_list, feasible_connections, avail_per_date, id_to_hut_name)
 
+    all_ids_in_trip_options = set()
+    for day in range(nr_days):
+        all_ids_in_trip_options.update(trip_options[f"day{day}"].unique())
+    filtered_huts = filtered_huts[filtered_huts["id"].isin(all_ids_in_trip_options)]
+
     # convert to dicts
     huts_with_id = huts.set_index("id")
-    nr_days = len(date_list)
     json_dicts = []
     for _, row in trip_options.iterrows():
         # make list of coordinates
@@ -268,12 +273,12 @@ def multi_day_planning():
         ]
         # combine names, places and distances
         infos = " -> ".join(
-            [row[f"name_day{k}"] + "(" + str(int(row[f"places_day{k}"])) + " spots)" for k in range(nr_days)]
+            [row[f"name_day{k}"] + " (" + str(int(row[f"places_day{k}"])) + " spots)" for k in range(nr_days)]
         )
         dist = ", ".join([str(round(row[f"distance_day{k}"] / 1000, 2)) + " km" for k in range(1, nr_days)])
         json_dicts.append({"infos": infos, "coordinates": coordinates, "distance": dist})
 
-    return jsonify({"status": "success", "polylines": json_dicts})
+    return jsonify({"status": "success", "routes": json_dicts, "markers": table_to_dict(filtered_huts)})
 
 
 def create_app():

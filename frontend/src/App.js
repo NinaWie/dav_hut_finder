@@ -8,6 +8,7 @@ import EmojiPeopleIcon from '@mui/icons-material/EmojiPeople';
 function App() {
   const [coordinates, setCoordinates] = useState(null);
   const [markers, setMarkers] = useState([]);
+  const [routes, setRoutes] = useState([]);
   const [openWelcomeDialog, setOpenWelcomeDialog] = useState(true);
   const [filterByDate, setFilterByDate] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,7 +19,9 @@ function App() {
     minAltitude: '0',
     maxAltitude: '4000',
     date: '',
-    minSpaces: '1'
+    minSpaces: '1',
+    startDate: '',
+    endDate: '',
   });
 
   useEffect(() => {
@@ -47,6 +50,7 @@ function App() {
       .then((data) => {
         if (data.status === 'success') {
           setMarkers(data.markers);
+          // NOTE: clear polylines? setRoutes([]);
         }
       })
       .catch((error) => {
@@ -54,14 +58,40 @@ function App() {
       });
   };
 
+  const fetchMultiDayMarkers = (formData) => {
+    console.log('Fetching multi-day markers with formData:', formData);
+    fetch('/api/multi_day', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(formData)
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === 'success') {
+          setRoutes(data.routes);
+          setMarkers(data.markers);
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching multi-day markers:', error);
+      });
+  };
+
   const handleCloseWelcomeDialog = () => {
     setOpenWelcomeDialog(false);
   };
 
-  const handleFormSubmit = (newFormData, newFilterByDate) => {
-    setFormData(newFormData);
-    setFilterByDate(newFilterByDate);  // Track checkbox state
+  const handleFormSubmit = (newFormData, newFilterByDate, actionType) => {
+    if (actionType === 'multiDay') {
+      fetchMultiDayMarkers(newFormData);
+    } else {
+      setFormData(newFormData);
+      setFilterByDate(newFilterByDate); // Will trigger useEffect → fetchMarkers
+    }
   };
+
 
   const handleMapClick = (latlng) => {
     const newFormData = {
@@ -88,7 +118,7 @@ function App() {
           onSubmit={handleFormSubmit}
           filterByDate={filterByDate} // NEW: Pass checkbox state
         />
-        <MapComponent setCoordinates={setCoordinates} markers={markers} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} />
+        <MapComponent setCoordinates={setCoordinates} markers={markers} routes={routes} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} />
       </div>
 
       <Dialog open={openWelcomeDialog} onClose={handleCloseWelcomeDialog}>
