@@ -42,10 +42,17 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     const dataToSubmit = { ...localFormData };
+    const submitter = e.nativeEvent.submitter;
+    const action = submitter?.value;
+
     if (!filterByDate) {
       delete dataToSubmit.date; // Exclude date if unchecked
     }
-    onSubmit(dataToSubmit, filterByDate);  // Send checkbox state to App.js
+    if (action === "applyFilters") {
+      onSubmit(dataToSubmit, filterByDate, "applyFilters");
+    } else if (action === "multiDay") {
+      onSubmit(dataToSubmit, filterByDate, "multiDay");
+    }
   };
 
 
@@ -122,8 +129,39 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
         )}
       </Box>
 
+      {/* Multi-day section */}
+      <Box display="flex" flexDirection="column" gap={3} p={2}>
+        <Typography variant="h6">Find multi-day hike</Typography>
+
+        <Box display="flex" flexDirection="column" gap={2}>
+          <TextField
+            label="Start Date"
+            type="date"
+            name="startDate"
+            value={localFormData.startDate}
+            onChange={handleChange}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <TextField
+            label="End Date"
+            type="date"
+            name="endDate"
+            value={localFormData.endDate}
+            onChange={handleChange}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <Button type="submit" name="action" value="multiDay" variant="contained" color="primary" style={{ marginTop: '10px' }}>
+            Find multi-day options
+          </Button>
+        </Box>
       </Box>
-      <Button type="submit" variant="contained" color="primary" style={{ marginTop: '10px' }}>
+
+      </Box>
+      <Button type="submit" name="action" value="applyFilters" variant="contained" color="primary" style={{ marginTop: '10px' }}>
         Apply
       </Button>
     </form>

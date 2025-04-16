@@ -1,9 +1,13 @@
 """filtering.py implements functions to filter huts by user input."""
 
+from datetime import datetime, timedelta
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from haversine import haversine
+
+DATE_FORMAT_IN, DATE_FORMAT_OUT = "%Y-%m-%d", "%d.%m.%Y"
 
 
 def filter_huts(
@@ -126,3 +130,21 @@ def multi_day_route_finding(
         ]
 
     return trip_options
+
+
+def generate_date_range(start_date_str: str, end_date_str: str) -> list[str]:
+    """Generate all dates between a start and end date."""
+    # Define the format
+
+    # Parse the dates
+    start_date = datetime.strptime(start_date_str, DATE_FORMAT_IN)
+    end_date = datetime.strptime(end_date_str, DATE_FORMAT_IN)
+
+    # Generate the range
+    date_list = []
+    current_date = start_date
+    while current_date <= end_date:
+        date_list.append(current_date.strftime(DATE_FORMAT_OUT))
+        current_date += timedelta(days=1)
+
+    return date_list

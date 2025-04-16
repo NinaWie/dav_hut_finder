@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -54,12 +54,13 @@ const createCustomMarker = (color) => {
 };
 
 
-const MapComponent = ({ markers, handleMapClick, minSpaces }) => {
+const MapComponent = ({ markers, routes, handleMapClick, minSpaces }) => {
   // Set default position for the personIcon on map load
   const [markerPosition, setMarkerPosition] = useState({
     lat: 47.170598236405986,
     lng: 10.72265625,
   });
+  console.log('Routes:', routes);
 
   return (
     <MapContainer center={[46.5, 10.5]} zoom={8} style={{ height: '100vh', width: '100%' }}>
@@ -111,6 +112,27 @@ const MapComponent = ({ markers, handleMapClick, minSpaces }) => {
           );
       })}
 
+      {routes.map((route, index) => (
+        <Polyline
+          key={index}
+          positions={route.coordinates}
+          color="purple"
+          weight={4}
+          opacity={0.8}
+          eventHandlers={{
+            mouseover: (e) => {
+              const layer = e.target;
+              layer.setStyle({ color: 'orange' });
+              layer.bindPopup(`<b>${route.infos}</b>`).openPopup();
+            },
+            mouseout: (e) => {
+              const layer = e.target;
+              layer.setStyle({ color: 'purple' });
+              layer.closePopup();
+            },
+          }}
+        />
+      ))}
 
 
       {/* Render the personIcon at the clicked position */}
