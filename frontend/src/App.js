@@ -22,6 +22,7 @@ function App() {
     minSpaces: '1',
     startDate: '',
     endDate: '',
+    maxHutDistance: 13
   });
 
   useEffect(() => {
@@ -59,7 +60,6 @@ function App() {
   };
 
   const fetchMultiDayMarkers = (formData) => {
-    console.log('Fetching multi-day markers with formData:', formData);
     fetch('/api/multi_day', {
       method: 'POST',
       headers: {

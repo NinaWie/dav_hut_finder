@@ -34,7 +34,7 @@ const ClickableMap = ({ handleMapClick }) => {
 };
 
 const getMarkerColor = (placesAvail, minSpaces) => {
-  minSpaces = Number(minSpaces);
+  minSpaces = 1; // NOTE: this can be set based on the actual minSpaces value from the form, currently just set to 1
   if (placesAvail < 0) return 'grey';         // No data or unknown availability
   if (placesAvail >= minSpaces + 5) return 'green';   // Plenty of spaces
   if (placesAvail >= minSpaces) return 'orange';   // Limited availability
@@ -60,7 +60,6 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces }) => {
     lat: 47.170598236405986,
     lng: 10.72265625,
   });
-  console.log('Routes:', routes);
 
   return (
     <MapContainer center={[46.5, 10.5]} zoom={8} style={{ height: '100vh', width: '100%' }}>

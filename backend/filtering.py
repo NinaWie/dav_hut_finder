@@ -1,5 +1,6 @@
 """filtering.py implements functions to filter huts by user input."""
 
+import os
 from datetime import datetime, timedelta
 
 import geopandas as gpd
@@ -8,6 +9,9 @@ import pandas as pd
 from haversine import haversine
 
 DATE_FORMAT_IN, DATE_FORMAT_OUT = "%Y-%m-%d", "%d.%m.%Y"
+
+# load feasible connections
+FEASIBLE_CONNECTIONS = pd.read_csv(os.path.join("data", "feasible_connections.csv"), index_col="id_source")
 
 
 def filter_huts(
@@ -83,12 +87,18 @@ def filter_huts(
 
 def multi_day_route_finding(
     date_list: list[str],
-    feasible_connections: pd.DataFrame,
     avail_per_date: pd.DataFrame,
     id_to_hut: dict,
     require_unique_huts: bool = True,
+    max_dist_between_huts: int = -1,
 ) -> pd.DataFrame:
     """Find all possible combinations of huts for multiple days."""
+    # filter feasible connections by the ones that are short enough
+    if max_dist_between_huts > 0:
+        feasible_connections = FEASIBLE_CONNECTIONS[FEASIBLE_CONNECTIONS["distance"] <= max_dist_between_huts]
+    else:
+        feasible_connections = FEASIBLE_CONNECTIONS.copy()
+
     col_names, trip_options = [], pd.DataFrame()
     for i, current_date in enumerate(date_list):
         # collect column names for sorting them in the end
@@ -134,7 +144,6 @@ def multi_day_route_finding(
 
 def generate_date_range(start_date_str: str, end_date_str: str) -> list[str]:
     """Generate all dates between a start and end date."""
-    # Define the format
 
     # Parse the dates
     start_date = datetime.strptime(start_date_str, DATE_FORMAT_IN)
