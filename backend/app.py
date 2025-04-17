@@ -251,11 +251,11 @@ def multi_day_planning():
     filtered_hut_ids = filtered_huts["id"]
     avail_per_date = avail_per_date[avail_per_date.index.isin(filtered_hut_ids)]
 
-    # load feasible connections - NOTE: preload this to speed up the process
-    feasible_connections = pd.read_csv(os.path.join("data", "feasible_connections.csv"), index_col="id_source")
-
     # compute trip options
-    trip_options = multi_day_route_finding(date_list, feasible_connections, avail_per_date, id_to_hut_name)
+    max_dist_between_huts = float(data.get("maxHutDistance", -1)) * 1000  # convert to meters
+    trip_options = multi_day_route_finding(
+        date_list, avail_per_date, id_to_hut_name, max_dist_between_huts=max_dist_between_huts
+    )
 
     all_ids_in_trip_options = set()
     for day in range(nr_days):
