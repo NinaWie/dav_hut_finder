@@ -192,7 +192,7 @@ def clean_huts(inp_path, out_path):
     huts_gdf_clean.to_file(out_path, driver="GeoJSON")
 
 
-def save_feasible_connections(max_distance: int = 10000):
+def save_feasible_connections(max_distance: int = 13000):
     """Generate all feasible connections between huts and save to csv."""
     huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
     huts.to_crs(2421, inplace=True)
