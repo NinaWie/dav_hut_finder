@@ -4,6 +4,7 @@ import MapComponent from './MapComponent';
 import InputForm from './InputForm';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import EmojiPeopleIcon from '@mui/icons-material/EmojiPeople';
+import CircularProgress from '@mui/material/CircularProgress';
 
 function App() {
   const [coordinates, setCoordinates] = useState(null);
@@ -24,6 +25,7 @@ function App() {
     endDate: '',
     maxHutDistance: 13
   });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (formData.longitude && formData.latitude) {
@@ -60,6 +62,8 @@ function App() {
   };
 
   const fetchMultiDayMarkers = (formData) => {
+    setLoading(true);
+
     fetch('/api/multi_day', {
       method: 'POST',
       headers: {
@@ -76,6 +80,9 @@ function App() {
       })
       .catch((error) => {
         console.error('Error fetching multi-day markers:', error);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
@@ -110,6 +117,14 @@ function App() {
   return (
     <div className="App">
       <h1>Hut Finder</h1>
+
+      {/* Loading Spinner */}
+      {loading && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+          <CircularProgress />
+        </div>
+      )}
+
       <div className="content">
         <InputForm
           coordinates={coordinates}
