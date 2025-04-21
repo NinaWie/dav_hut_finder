@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -54,7 +54,7 @@ const createCustomMarker = (color) => {
 };
 
 
-const MapComponent = ({ markers, routes, handleMapClick, minSpaces }) => {
+const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) => {
   // Set default position for the personIcon on map load
   const [markerPosition, setMarkerPosition] = useState({
     lat: 47.170598236405986,
@@ -110,6 +110,20 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces }) => {
               </Marker>
           );
       })}
+
+      {/* draw the search-radius circle */}
+      {markerPosition && radiusKm > 0 && (
+        <Circle
+          center={markerPosition}
+          radius={radiusKm * 1000}       // conversions to meters
+          pathOptions={{
+            color: '#3388ff',
+            weight: 2,
+            opacity: 0.5,
+            fillOpacity: 0.1,
+          }}
+        />
+      )}
 
       {routes.map((route, index) => (
         <Polyline
