@@ -88,7 +88,7 @@ const InputForm = ({ formData, onSubmit, loading }) => {
       {/* Single-Day Tab */}
       {tabIndex === 0 && (
         <Box width="100%" display="flex" justifyContent="center" p={isMobile ? 1 : 2}>
-          <Box width="100%" maxWidth={isMobile ? 360 : 600}>
+          <Box width="100%" maxWidth={isMobile ? '90%' : 600}>
             <Typography gutterBottom align="center">
               Distance: {localFormData.minDistance} km - {localFormData.maxDistance} km
             </Typography>
