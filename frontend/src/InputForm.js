@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Slider, Typography, TextField, Button, Box, Tabs, Tab, CircularProgress } from '@mui/material';
+import {
+  Slider,
+  Typography,
+  TextField,
+  Button,
+  Box,
+  Tabs,
+  Tab,
+  CircularProgress,
+  useMediaQuery,
+  useTheme
+} from '@mui/material';
 import './InputForm.css';
 
 const InputForm = ({ formData, onSubmit, loading }) => {
   const [localFormData, setLocalFormData] = useState(formData);
   const [tabIndex, setTabIndex] = useState(0);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     setLocalFormData(formData);
@@ -29,7 +42,7 @@ const InputForm = ({ formData, onSubmit, loading }) => {
     setLocalFormData(prev => ({
       ...prev,
       ...(name === 'distanceRange' ? { minDistance: min, maxDistance: max } : {}),
-      ...(name === 'altitudeRange'  ? { minAltitude: min, maxAltitude: max } : {}),
+      ...(name === 'altitudeRange' ? { minAltitude: min, maxAltitude: max } : {})
     }));
   };
 
@@ -47,22 +60,35 @@ const InputForm = ({ formData, onSubmit, loading }) => {
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} width="100%" display="flex" flexDirection="column" alignItems="center">
-      <Tabs 
-      	value={tabIndex}
-      	onChange={handleTabChange} 
-      	centered
-	textColor="primary"
-	indicatorColor="primary" 
-	sx={{ width: '100%', bgcolor: 'background.paper' }}>
-        <Tab label="Single-Day" />
-        <Tab label="Multi-Day" />
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      width={isMobile ? '95%' : '100%'}
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      p={isMobile ? 1 : 2}
+      sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}
+    >
+      <Tabs
+        value={tabIndex}
+        onChange={handleTabChange}
+        centered
+        textColor="primary"
+        indicatorColor="primary"
+        sx={{
+          bgcolor: 'background.paper',
+          minHeight: isMobile ? 32 : 48
+        }}
+      >
+        <Tab label="Single-Day" sx={{ minWidth: isMobile ? 80 : 120 }} />
+        <Tab label="Multi-Day" sx={{ minWidth: isMobile ? 80 : 120 }} />
       </Tabs>
 
       {/* Single-Day Tab */}
       {tabIndex === 0 && (
-        <Box width="100%" display="flex" justifyContent="center" p={2}>
-          <Box width="100%" maxWidth={600}>
+        <Box width="100%" display="flex" justifyContent="center" p={isMobile ? 1 : 2}>
+          <Box width="100%" maxWidth={isMobile ? 360 : 600}>
             <Typography gutterBottom align="center">
               Distance: {localFormData.minDistance} km - {localFormData.maxDistance} km
             </Typography>
@@ -84,7 +110,6 @@ const InputForm = ({ formData, onSubmit, loading }) => {
               max={4000}
               step={10}
             />
-            {/* Group Minimal Spaces and Date side by side */}
             <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2} mt={2}>
               <TextField
                 fullWidth
@@ -94,6 +119,7 @@ const InputForm = ({ formData, onSubmit, loading }) => {
                 value={localFormData.minSpaces}
                 onChange={handleChange}
                 InputLabelProps={{ shrink: true }}
+                size="small"
               />
               <TextField
                 fullWidth
@@ -103,10 +129,18 @@ const InputForm = ({ formData, onSubmit, loading }) => {
                 value={localFormData.date}
                 onChange={handleChange}
                 InputLabelProps={{ shrink: true }}
+                size="small"
               />
             </Box>
             <Box textAlign="center" mt={2}>
-              <Button type="submit" value="applyFilters" variant="contained">Apply Filters</Button>
+              <Button
+                type="submit"
+                value="applyFilters"
+                variant="contained"
+                size={isMobile ? 'small' : 'medium'}
+              >
+                Apply Filters
+              </Button>
             </Box>
           </Box>
         </Box>
@@ -114,8 +148,8 @@ const InputForm = ({ formData, onSubmit, loading }) => {
 
       {/* Multi-Day Tab */}
       {tabIndex === 1 && (
-        <Box width="100%" display="flex" justifyContent="center" p={2}>
-          <Box width="100%" maxWidth={600}>
+        <Box width="100%" display="flex" justifyContent="center" p={isMobile ? 1 : 2}>
+          <Box width="100%" maxWidth={isMobile ? '90%' : 600}>
             <Typography gutterBottom align="center">
               Distance: {localFormData.minDistance} km - {localFormData.maxDistance} km
             </Typography>
@@ -139,13 +173,39 @@ const InputForm = ({ formData, onSubmit, loading }) => {
             />
             <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2} mt={2}>
               <Box flex={1}>
-                <TextField fullWidth label="Start Date" type="date" name="startDate" value={localFormData.startDate} onChange={handleChange} InputLabelProps={{ shrink: true }} />
+                <TextField
+                  fullWidth
+                  label="Start Date"
+                  type="date"
+                  name="startDate"
+                  value={localFormData.startDate}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                />
                 <Box mt={2}>
-                  <TextField fullWidth label="End Date" type="date" name="endDate" value={localFormData.endDate} onChange={handleChange} InputLabelProps={{ shrink: true }} />
+                  <TextField
+                    fullWidth
+                    label="End Date"
+                    type="date"
+                    name="endDate"
+                    value={localFormData.endDate}
+                    onChange={handleChange}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
                 </Box>
               </Box>
               <Box flex={1}>
-                <TextField fullWidth label="Minimal Spaces" type="number" name="minSpaces" value={localFormData.minSpaces} onChange={handleChange} />
+                <TextField
+                  fullWidth
+                  label="Minimal Spaces"
+                  type="number"
+                  name="minSpaces"
+                  value={localFormData.minSpaces}
+                  onChange={handleChange}
+                  size="small"
+                />
                 <Box mt={4}>
                   <Typography gutterBottom align="center">
                     Max distance between huts: {localFormData.maxHutDistance} km
@@ -162,7 +222,14 @@ const InputForm = ({ formData, onSubmit, loading }) => {
               </Box>
             </Box>
             <Box textAlign="center" mt={2}>
-              <Button type="submit" value="multiDay" variant="contained" disabled={loading} startIcon={loading ? <CircularProgress size={20} /> : null}>
+              <Button
+                type="submit"
+                value="multiDay"
+                variant="contained"
+                disabled={loading}
+                startIcon={<CircularProgress size={isMobile ? 16 : 20} />}
+                size="small"
+              >
                 Find Multi-Day Options
               </Button>
             </Box>
