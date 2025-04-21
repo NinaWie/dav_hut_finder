@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Slider, Typography, TextField, Button, Box, FormControlLabel, Checkbox } from '@mui/material';
+import CircularProgress from '@mui/material/CircularProgress';
 import './InputForm.css';
 
-const InputForm = ({ formData, setFormData, onSubmit }) => {
+const InputForm = ({ formData, setFormData, onSubmit, loading }) => {
   const [localFormData, setLocalFormData] = useState(formData);
   const [filterByDate, setFilterByDate] = useState(false);  // New state for controlling the date filter
 
@@ -201,14 +202,20 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
           </Box>
         </Box>
 
-        {/* Centered Button */}
-        <Box display="flex" justifyContent="center" >
+        {/* Centered Button with inline spinner */}
+        <Box display="flex" justifyContent="center" alignItems="center">
           <Button
             type="submit"
             name="action"
             value="multiDay"
             variant="contained"
             color="primary"
+            disabled={loading}
+            startIcon={
+              loading
+                ? <CircularProgress size={20} />    // match button icon size
+                : null
+            }
           >
             Find multi-day options
           </Button>
