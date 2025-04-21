@@ -122,7 +122,7 @@ function App() {
           formData={formData}
           setFormData={setFormData}
           onSubmit={handleFormSubmit}
-          filterByDate={filterByDate} 
+          filterByDate={filterByDate}
           loading={loading}
         />
         <MapComponent setCoordinates={setCoordinates} markers={markers} routes={routes} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} radiusKm={Number(formData.maxDistance)}/>

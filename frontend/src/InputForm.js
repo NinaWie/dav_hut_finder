@@ -241,4 +241,3 @@ const InputForm = ({ formData, onSubmit, loading }) => {
 };
 
 export default InputForm;
-
