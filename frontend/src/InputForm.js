@@ -10,6 +10,20 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
     setLocalFormData(formData);  // Sync local state with global form data
   }, [formData]);
 
+  // Clamp endDate to always be ≥ startDate
+  useEffect(() => {
+    const { startDate, endDate } = localFormData;
+    if (!startDate) return;
+
+    // if endDate is empty OR before the new startDate → bump it up
+    if (!endDate || endDate < startDate) {
+      setLocalFormData(prev => ({
+        ...prev,
+        endDate: startDate,
+      }));
+    }
+  }, [localFormData.startDate]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setLocalFormData((prevData) => ({
@@ -125,9 +139,8 @@ const InputForm = ({ formData, setFormData, onSubmit }) => {
             name="date"
             value={localFormData.date}
             onChange={handleChange}
-            InputLabelProps={{
-              shrink: true,
-            }}
+            InputLabelProps={{ shrink: true, }}
+	    inputProps={{ min: localFormData.startDate || undefined }}
           />
           </Box>
         )}
