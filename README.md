@@ -13,6 +13,7 @@ Filter huts in the alps by
 * work on `develop` branch by default
 * use [conventional commit style for automatic semantic versioning and releases](https://engineering.deloitte.com.au/articles/semantic-versioning-with-conventional-commits) via CI
 * install [pre-commit](https://pre-commit.com/) hook: `pre-commit install` to force correctness before every commit
+* **Be sure to have [git lfs](https://git-lfs.com/) installed.** Run `git lfs pull` to be sure everything is synced.
 
 ### Docker
 

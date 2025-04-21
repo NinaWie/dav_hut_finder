@@ -16,7 +16,7 @@ function App() {
     longitude: '10.72265625',
     latitude: '47.170598236405986',
     minDistance: '0',
-    maxDistance: '500',
+    maxDistance: '250',
     minAltitude: '0',
     maxAltitude: '4000',
     date: '',
@@ -133,7 +133,7 @@ function App() {
           onSubmit={handleFormSubmit}
           filterByDate={filterByDate} // NEW: Pass checkbox state
         />
-        <MapComponent setCoordinates={setCoordinates} markers={markers} routes={routes} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} />
+        <MapComponent setCoordinates={setCoordinates} markers={markers} routes={routes} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} radiusKm={Number(formData.maxDistance)}/>
       </div>
 
       <Dialog open={openWelcomeDialog} onClose={handleCloseWelcomeDialog}>
