@@ -95,6 +95,7 @@ function App() {
     } else {
       setFormData(newFormData);
       setFilterByDate(newFilterByDate); // Will trigger useEffect → fetchMarkers
+      setRoutes([]);
     }
   };
 
