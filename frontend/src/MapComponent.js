@@ -34,7 +34,6 @@ const ClickableMap = ({ handleMapClick }) => {
 };
 
 const getMarkerColor = (placesAvail, minSpaces) => {
-  minSpaces = minSpaces;
   if (placesAvail < 0) return 'grey';         // No data or unknown availability
   if (placesAvail >= minSpaces + 5) return 'green';   // Plenty of spaces
   if (placesAvail >= minSpaces) return 'orange';   // Limited availability
@@ -130,8 +129,8 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
           key={index}
           positions={route.coordinates}
           color="purple"
-          weight={4}
-          opacity={0.8}
+          weight={5}
+          opacity={0.5}
           eventHandlers={{
             mouseover: (e) => {
               const layer = e.target;
