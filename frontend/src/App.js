@@ -18,10 +18,10 @@ function App() {
     maxDistance: '250',
     minAltitude: '0',
     maxAltitude: '4000',
-    date: '',
+    date: null,
     minSpaces: '1',
-    startDate: '',
-    endDate: '',
+    startDate: null,
+    endDate: null,
     maxHutDistance: 13
   });
   const [loading, setLoading] = useState(false);
