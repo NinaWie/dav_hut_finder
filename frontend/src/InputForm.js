@@ -13,9 +13,8 @@ import {
 } from '@mui/material';
 import './InputForm.css';
 
-const InputForm = ({ formData, onSubmit, loading }) => {
+const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) => {
   const [localFormData, setLocalFormData] = useState(formData);
-  const [tabIndex, setTabIndex] = useState(0);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -29,8 +28,6 @@ const InputForm = ({ formData, onSubmit, loading }) => {
       setLocalFormData(prev => ({ ...prev, endDate: startDate }));
     }
   }, [localFormData.startDate]);
-
-  const handleTabChange = (_, newIndex) => setTabIndex(newIndex);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

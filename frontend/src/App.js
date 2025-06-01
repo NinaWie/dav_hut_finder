@@ -25,9 +25,15 @@ function App() {
     maxHutDistance: 13
   });
   const [loading, setLoading] = useState(false);
+  const [tabIndex, setTabIndex] = useState(0);
+
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
+  };
+
 
   useEffect(() => {
-    if (formData.longitude && formData.latitude) {
+    if (tabIndex === 0 && formData.longitude && formData.latitude) {
       fetchMarkers({ ...formData, filterByDate });
     }
   }, [formData]);
@@ -124,6 +130,8 @@ function App() {
           onSubmit={handleFormSubmit}
           filterByDate={filterByDate}
           loading={loading}
+          tabIndex={tabIndex}
+          handleTabChange={handleTabChange}
         />
         <MapComponent setCoordinates={setCoordinates} markers={markers} routes={routes} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} radiusKm={Number(formData.maxDistance)}/>
       </div>
