@@ -1,6 +1,23 @@
-.App {
+/* .App {
   text-align: center;
+} */
+html, body, .App {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden; /* Prevent scrolling */
 }
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Fill full screen */
+}
+
+.map-container {
+  flex: 1 1 auto; /* Fill remaining space */
+}
+
 
 .App-logo {
   height: 40vmin;
