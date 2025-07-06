@@ -16,6 +16,8 @@ html, body, .App {
 
 .map-container {
   flex: 1 1 auto; /* Fill remaining space */
+  width: 100%;
+  height: 100%;
 }
 
 

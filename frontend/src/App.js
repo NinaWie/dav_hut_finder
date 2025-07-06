@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import MapComponent from './MapComponent';
 import InputForm from './InputForm';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
+import { Dialog, Box, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import EmojiPeopleIcon from '@mui/icons-material/EmojiPeople';
 
 function App() {
@@ -133,7 +133,9 @@ function App() {
           tabIndex={tabIndex}
           handleTabChange={handleTabChange}
         />
-        <MapComponent setCoordinates={setCoordinates} markers={markers} routes={routes} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} radiusKm={Number(formData.maxDistance)}/>
+        <Box flex={1} display="flex">
+          <MapComponent setCoordinates={setCoordinates} markers={markers} routes={routes} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} radiusKm={Number(formData.maxDistance)}/>
+        </Box>
       </div>
 
       <Dialog open={openWelcomeDialog} onClose={handleCloseWelcomeDialog}>

@@ -34,7 +34,6 @@ const ClickableMap = ({ handleMapClick }) => {
 };
 
 const getMarkerColor = (placesAvail, minSpaces) => {
-  minSpaces = minSpaces;
   if (placesAvail < 0) return 'grey';         // No data or unknown availability
   if (placesAvail >= minSpaces + 5) return 'green';   // Plenty of spaces
   if (placesAvail >= minSpaces) return 'orange';   // Limited availability
