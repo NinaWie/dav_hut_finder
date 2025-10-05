@@ -51,6 +51,10 @@ const InputForm = ({ formData, onSubmit, loading }) => {
   };
 
   const handleSubmit = (e) => {
+    if (!isDateRangeValid()) {
+      // Optionally show an alert/snackbar
+      return;
+    }
     e.preventDefault();
     const dataToSubmit = { ...localFormData };
     if (!dataToSubmit.date) delete dataToSubmit.date;
@@ -58,6 +62,23 @@ const InputForm = ({ formData, onSubmit, loading }) => {
     const filterByDate = Boolean(dataToSubmit.date);
     onSubmit(dataToSubmit, filterByDate, action === 'multiDay' ? 'multiDay' : 'applyFilters');
   };
+
+  const isDateRangeValid = () => {
+    const { startDate, endDate } = localFormData;
+
+    if (!startDate || !endDate) return false;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start) || isNaN(end)) return false;
+
+    // At least one day apart
+    return start < end;
+  };
+
+  const showError = localFormData.startDate && localFormData.endDate && !isDateRangeValid();
+
 
   return (
     <Box
@@ -193,6 +214,8 @@ const InputForm = ({ formData, onSubmit, loading }) => {
                     onChange={handleChange}
                     InputLabelProps={{ shrink: true }}
                     size="small"
+                    error={showError}
+                    helperText={showError ? "Start date must be before end date" : ""}
                   />
                 </Box>
               </Box>
@@ -226,8 +249,8 @@ const InputForm = ({ formData, onSubmit, loading }) => {
                 type="submit"
                 value="multiDay"
                 variant="contained"
-                disabled={loading}
-                startIcon={<CircularProgress size={isMobile ? 16 : 20} />}
+                disabled={!isDateRangeValid() || loading}
+                startIcon={loading ? <CircularProgress size={isMobile ? 16 : 20} /> : null}
                 size="small"
               >
                 Find Multi-Day Options

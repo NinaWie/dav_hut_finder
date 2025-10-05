@@ -5,12 +5,27 @@ import InputForm from './InputForm';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import EmojiPeopleIcon from '@mui/icons-material/EmojiPeople';
 
+const getDefaultDates = () => {
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+
+  const toISODate = (date) => date.toISOString().split("T")[0]; // 'YYYY-MM-DD'
+
+  return {
+    startDate: toISODate(today),
+    endDate: toISODate(tomorrow),
+  };
+};
+
+
 function App() {
   const [coordinates, setCoordinates] = useState(null);
   const [markers, setMarkers] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [openWelcomeDialog, setOpenWelcomeDialog] = useState(true);
   const [filterByDate, setFilterByDate] = useState(false);
+  const defaultDates = getDefaultDates();
   const [formData, setFormData] = useState({
     longitude: '10.72265625',
     latitude: '47.170598236405986',
@@ -18,10 +33,10 @@ function App() {
     maxDistance: '250',
     minAltitude: '0',
     maxAltitude: '4000',
-    date: null,
+    date: defaultDates.startDate,
     minSpaces: '1',
-    startDate: null,
-    endDate: null,
+    startDate: defaultDates.startDate,
+    endDate: defaultDates.endDate,
     maxHutDistance: 13
   });
   const [loading, setLoading] = useState(false);
