@@ -5,13 +5,18 @@ Filter huts in the alps by
 * Public transport accessibility
 * Available places at a specific date
 
-![](./doc/1.png)
-![](./doc/2.png)
+## Single Day Mode
+
+![](./doc/single-day.png)
+
+## Multi Day Mode
+
+![](./doc/multi-day.png)
 
 ## Development
 
 * work on `develop` branch by default
-* use [conventional commit style for automatic semantic versioning and releases](https://engineering.deloitte.com.au/articles/semantic-versioning-with-conventional-commits) via CI
+* use [conventional commit style for automatic semantic versioning and releases](https://web.archive.org/web/20241104050828/https://engineering.deloitte.com.au/articles/semantic-versioning-with-conventional-commits) via CI
 * install [pre-commit](https://pre-commit.com/) hook: `pre-commit install` to force correctness before every commit
 * **Be sure to have [git lfs](https://git-lfs.com/) installed.** Run `git lfs pull` to be sure everything is synced.
 
