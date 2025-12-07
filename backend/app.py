@@ -9,11 +9,12 @@ from typing import Any, Dict, Text
 import geopandas as gpd
 import pandas as pd
 import psycopg2
+import sqlalchemy
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS, cross_origin
 from sqlalchemy import create_engine
 
-from filtering import filter_huts
+from filtering import DATE_FORMAT_IN, DATE_FORMAT_OUT, filter_huts, generate_date_range, multi_day_route_finding
 
 app = Flask(__name__, static_folder="static")
 
@@ -36,16 +37,27 @@ def get_con():
     return psycopg2.connect(**db_credentials)
 
 
+try:
+    engine = create_engine("postgresql+psycopg2://", creator=get_con)
+except sqlalchemy.exc.OperationalError as err:
+    raise RuntimeError("Database issue: No connection can be established! Check login and database server") from err
+
+
 # load huts database
 huts = gpd.read_file(os.path.join("data", "huts_database.geojson"))
+id_to_hut_name = huts.set_index("id")["name"].to_dict()
 
 
-def get_availability_for_date(date: str = "*") -> pd.DataFrame:
+def get_availability_for_dates(dates: list, min_places: int = 1) -> pd.DataFrame:
     """Get table with number of available places for each hut on a given date."""
     # create engine
     engine = create_engine("postgresql+psycopg2://", creator=get_con)
     # load availability
-    availability = pd.read_sql(f"SELECT hut_id, date, places_avail FROM hut_availability WHERE date='{date}'", engine)
+    date_str = "date='" + "' OR date='".join(dates) + "'"
+    availability = pd.read_sql(
+        f"SELECT hut_id, date, places_avail FROM hut_availability WHERE places_avail>={min_places} AND ({date_str})",
+        engine,
+    )
     return availability
 
 
@@ -166,19 +178,23 @@ def submit():
 
     # get inputs for checking date availability (need to convert to datetime and back for correct format)
     check_date_str = data.get("date", None)
-    min_avail_spaces = int(data.get("minSpaces", 1))
+    # min_avail_spaces = int(data.get("minSpaces", 1))
 
     # filter huts by distance from start etc
     filtered_huts = filter_huts(huts, **filter_attributes)
+    filtered_huts["link"] = filtered_huts["id"].apply(
+        lambda x: f"https://www.hut-reservation.org/reservation/book-hut/{x}/wizard"
+    )
+    filtered_huts["verein"] = filtered_huts["verein"].fillna("-")
 
     # filter by availability
     if check_date_str is not None:
         # transform check date
-        check_date_datetime = datetime.strptime(check_date_str, "%Y-%m-%d")
-        check_date = check_date_datetime.strftime("%d.%m.%Y")
+        check_date_datetime = datetime.strptime(check_date_str, DATE_FORMAT_IN)
+        check_date = check_date_datetime.strftime(DATE_FORMAT_OUT)
 
         # load availability (cannot preload it because it is updated daily)
-        availability = get_availability_for_date(check_date)
+        availability = get_availability_for_dates([check_date])
 
         if DEBUG:
             return availability_as_html(availability, filtered_huts)
@@ -190,8 +206,11 @@ def submit():
         # # sum up availability for all room types
         # availability = availability.groupby("id")["available_spaces"].sum().reset_index()
 
-        available_huts = availability[availability["places_avail"] >= min_avail_spaces]
-        huts_filtered_and_available = filtered_huts.merge(available_huts, left_on="id", right_on="hut_id", how="inner")
+        # add places_avail column to filtered huts
+        huts_filtered_and_available = filtered_huts.merge(availability, left_on="id", right_on="hut_id", how="left")
+        # fill nans
+        huts_filtered_and_available["places_avail"] = huts_filtered_and_available["places_avail"].fillna(-1)
+        huts_filtered_and_available = huts_filtered_and_available.fillna("-")
         # huts_filtered_and_available = filtered_huts[filtered_huts["id"].isin(available_huts["hut_id"])]
         return jsonify({"status": "success", "markers": table_to_dict(huts_filtered_and_available)})
 
@@ -202,6 +221,64 @@ def submit():
                 "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
             )
         return jsonify({"status": "success", "markers": table_to_dict(filtered_huts)})
+
+
+@app.route("/api/multi_day", methods=["POST"])
+def multi_day_planning():
+    """Handle multi-day planning request."""
+    data = request.json
+
+    # Convert strings to floats and date string to datetime object
+    filter_attributes = {
+        "start_lat": float(data["latitude"]),
+        "start_lon": float(data["longitude"]),
+        "min_distance": float(data["minDistance"]),
+        "max_distance": float(data["maxDistance"]),
+        "min_altitude": float(data["minAltitude"]),
+        "max_altitude": float(data["maxAltitude"]),
+    }
+    # construct list of dates
+    date_list = generate_date_range(data["startDate"], data["endDate"])
+    nr_days = len(date_list)
+    assert len(date_list) > 1, "There must be at least two dates for multi-day planning"
+
+    # get availability for all dates
+    availability_from_database = get_availability_for_dates(date_list, int(data["minSpaces"]))
+    avail_per_date = availability_from_database.pivot(index="hut_id", columns="date", values="places_avail")
+
+    # filter huts by distance from start etc
+    filtered_huts = filter_huts(huts, **filter_attributes)
+    filtered_hut_ids = filtered_huts["id"]
+    avail_per_date = avail_per_date[avail_per_date.index.isin(filtered_hut_ids)]
+
+    # compute trip options
+    max_dist_between_huts = float(data.get("maxHutDistance", -1)) * 1000  # convert to meters
+    trip_options = multi_day_route_finding(
+        date_list, avail_per_date, id_to_hut_name, max_dist_between_huts=max_dist_between_huts
+    )
+
+    all_ids_in_trip_options = set()
+    for day in range(nr_days):
+        all_ids_in_trip_options.update(trip_options[f"day{day}"].unique())
+    filtered_huts = filtered_huts[filtered_huts["id"].isin(all_ids_in_trip_options)]
+
+    # convert to dicts
+    huts_with_id = huts.set_index("id")
+    json_dicts = []
+    for _, row in trip_options.iterrows():
+        # make list of coordinates
+        coordinates = [
+            [huts_with_id.loc[row[f"day{k}"], "latitude"], huts_with_id.loc[row[f"day{k}"], "longitude"]]
+            for k in range(nr_days)
+        ]
+        # combine names, places and distances
+        infos = " -> ".join(
+            [row[f"name_day{k}"] + " (" + str(int(row[f"places_day{k}"])) + " spots)" for k in range(nr_days)]
+        )
+        dist = ", ".join([str(round(row[f"distance_day{k}"] / 1000, 2)) + " km" for k in range(1, nr_days)])
+        json_dicts.append({"infos": infos, "coordinates": coordinates, "distance": dist})
+
+    return jsonify({"status": "success", "routes": json_dicts, "markers": table_to_dict(filtered_huts)})
 
 
 def create_app():

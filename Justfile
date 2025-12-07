@@ -13,9 +13,10 @@ caddy:
     sudo ln -sf {{invocation_directory()}}/dev.Caddyfile /etc/caddy/dev.Caddyfile
     sudo ln -sf {{invocation_directory()}}/prod.Caddyfile /etc/caddy/prod.Caddyfile
 
-start arg: hosts
-    just cleanup {{ arg }}
-    CADDYFILE=/etc/caddy/{{ arg }}.Caddyfile docker compose up {{arg}} --build
+start arg:
+    just cleanup
+    docker compose up {{arg}} --build -d
+    docker compose logs -f
 
-cleanup arg:
-    CADDYFILE=/etc/caddy/{{ arg }}.Caddyfile docker compose down --remove-orphans
+cleanup:
+    docker compose down --remove-orphans

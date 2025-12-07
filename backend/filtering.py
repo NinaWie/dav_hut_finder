@@ -1,9 +1,17 @@
 """filtering.py implements functions to filter huts by user input."""
 
+import os
+from datetime import datetime, timedelta
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from haversine import haversine
+
+DATE_FORMAT_IN, DATE_FORMAT_OUT = "%Y-%m-%d", "%d.%m.%Y"
+
+# load feasible connections
+FEASIBLE_CONNECTIONS = pd.read_csv(os.path.join("data", "feasible_connections.csv"), index_col="id_source")
 
 
 def filter_huts(
@@ -75,3 +83,77 @@ def filter_huts(
         huts_filtered["distance"] = pd.NA
 
     return huts_filtered
+
+
+def multi_day_route_finding(
+    date_list: list[str],
+    avail_per_date: pd.DataFrame,
+    id_to_hut: dict,
+    require_unique_huts: bool = True,
+    max_dist_between_huts: int = -1,
+) -> pd.DataFrame:
+    """Find all possible combinations of huts for multiple days."""
+    # filter feasible connections by the ones that are short enough
+    if max_dist_between_huts > 0:
+        feasible_connections = FEASIBLE_CONNECTIONS[FEASIBLE_CONNECTIONS["distance"] <= max_dist_between_huts]
+    else:
+        feasible_connections = FEASIBLE_CONNECTIONS.copy()
+
+    col_names, trip_options = [], pd.DataFrame()
+    for i, current_date in enumerate(date_list):
+        # collect column names for sorting them in the end
+        col_names.extend([f"day{i}", f"name_day{i}", f"places_day{i}"])
+
+        # filter for availability on this date
+        avail_current_day = avail_per_date[[current_date]].dropna().rename({current_date: f"places_day{i}"}, axis=1)
+        # print(f"Avail on day {i}: {len(avail_current_day)}")
+
+        avail_current_day[f"name_day{i}"] = id_to_hut
+
+        # for last hut: special case, just filter availability, then stop
+        if i == len(date_list) - 1:
+            trip_options = trip_options.merge(avail_current_day, how="inner", left_on=f"day{i}", right_index=True)
+            break
+
+        # check what options we have in general to go to the next hut
+        options_to_next_day = avail_current_day.merge(
+            feasible_connections, how="inner", left_index=True, right_index=True
+        ).reset_index(names=f"day{i}")
+
+        # print(f"Options for transfer from {i} to {i+1}: {len(options_to_next_day)}")
+
+        # merge with overall result
+        if i == 0:
+            trip_options = options_to_next_day
+        else:
+            trip_options = options_to_next_day.merge(trip_options, left_on=f"day{i}", right_on=f"day{i}", how="inner")
+
+        # rename columns
+        trip_options.rename({"id_target": f"day{i+1}", "distance": f"distance_day{i+1}"}, axis=1, inplace=True)
+        col_names.append(f"distance_day{i+1}")
+        # print(f"Total options after day {i}: {len(trip_options)}")
+    trip_options = trip_options[col_names]
+
+    if require_unique_huts:
+        trip_options = trip_options[
+            trip_options[[c for c in col_names if c.startswith("day")]].nunique(axis=1) == len(date_list)
+        ]
+
+    return trip_options
+
+
+def generate_date_range(start_date_str: str, end_date_str: str) -> list[str]:
+    """Generate all dates between a start and end date."""
+
+    # Parse the dates
+    start_date = datetime.strptime(start_date_str, DATE_FORMAT_IN)
+    end_date = datetime.strptime(end_date_str, DATE_FORMAT_IN)
+
+    # Generate the range
+    date_list = []
+    current_date = start_date
+    while current_date <= end_date:
+        date_list.append(current_date.strftime(DATE_FORMAT_OUT))
+        current_date += timedelta(days=1)
+
+    return date_list

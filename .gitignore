@@ -6,6 +6,7 @@ old_data/
 hut_*
 db_login.json
 !hut_finder
+*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -506,3 +507,5 @@ tags
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,pycharm,visualstudiocode,vim
 backend/data/availability.csv
+
+*.json

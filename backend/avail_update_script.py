@@ -10,6 +10,8 @@ import time
 import pandas as pd
 import psycopg2
 from psycopg2.extras import execute_values
+from slack import WebClient
+from slack.errors import SlackApiError
 from sqlalchemy import create_engine
 
 from check_availability import AvailabilityChecker
@@ -35,6 +37,9 @@ def convert_non_int_to_zero(x: str) -> int:
 DB_LOGIN_PATH = "db_login.json"
 SKIP_NOT_IN_SYSTEM = True
 PATH_NOT_IN_SYSTEM = os.path.join("data", "not_in_system.json")
+DAYS_TO_PROCESS = 31 * 8
+SAVE_TO_CSV = False
+CLIENT = WebClient(token=os.environ["SLACK_TOKEN"])
 
 # Set up database connection
 with open(DB_LOGIN_PATH, "r") as infile:
@@ -86,6 +91,16 @@ def update_hut_availability(hut_data: tuple) -> None:
         logger.error(f"Database error: {e}")
 
 
+def post_to_slack(message: str) -> None:
+    """Post message to Slack channel."""
+    try:
+        CLIENT.chat_postMessage(channel="#hut-finder", text=message, username="PennyMe")
+    except SlackApiError as e:
+        assert e.response["ok"] is False
+        assert e.response["error"]
+        raise e
+
+
 # create driver for scraping
 checker = AvailabilityChecker()
 
@@ -93,7 +108,7 @@ checker = AvailabilityChecker()
 today = datetime.datetime.today()
 today_date = today.date()
 start_date = today
-end_date = today + datetime.timedelta(days=120)  # NOTE: need to decide what to set this to
+end_date = today + datetime.timedelta(days=DAYS_TO_PROCESS)
 
 tic_start = time.time()
 
@@ -105,6 +120,9 @@ else:
 
 # result lists
 all_avail = []
+total_errors, successful_updates = 0, 0
+
+post_to_slack("Starting availability check...")
 
 # iterate over huts
 for hut_id in range(1, 673):
@@ -118,9 +136,19 @@ for hut_id in range(1, 673):
 
     # call availability checker
     try:
-        result_for_hut, status = checker(hut_id, start_date, end_date)
+        # result_for_hut, status = checker(hut_id, start_date, end_date)
+        result_for_hut, status = checker.retrieve_from_calendar(hut_id, num_months=DAYS_TO_PROCESS // 31)
     except Exception as e:
+        checker.quit()
+        del checker
         logger.error(f"Uncaught error! {e}")
+        time.sleep(10)  # sleep 10 seconds to recover
+        checker = AvailabilityChecker()  # reinitialize checker
+        logger.info("Reinstated checker, continuing...")
+        total_errors += 1
+        if total_errors > 5:
+            logger.error("Too many errors, exiting...")
+            sys.exit(1)
         continue
 
     # check if an error was returned
@@ -135,41 +163,56 @@ for hut_id in range(1, 673):
     result_for_hut_tuple = [
         (hut_id, date, int(places_avail), today_date)
         for date, places_avail in result_for_hut.items()
-        if places_avail.isdigit()
+        if isinstance(places_avail, int) or places_avail.isdigit()
     ]
     update_hut_availability(result_for_hut_tuple)
+    successful_updates += 1
 
-    # add to dataframe
-    result_for_hut_df = pd.DataFrame(result_for_hut, index=[hut_id])
-    all_avail.append(result_for_hut_df)
+    if hut_id % 10 == 0:
+        # Save the huts that are not in system
+        with open(os.path.join("data", "not_in_system.json"), "w") as outfile:
+            json.dump(huts_not_in_system, outfile)
 
-    # Add to availability csv and save
-    pd.concat(all_avail).to_csv(os.path.join("availability.csv"))
+    if SAVE_TO_CSV:
+        # Saving as csv
+        # add to dataframe
+        result_for_hut_df = pd.DataFrame(result_for_hut, index=[hut_id])
+        all_avail.append(result_for_hut_df)
+
+        # Add to availability csv and save
+        pd.concat(all_avail).to_csv(os.path.join("availability.csv"))
 
     logger.info(f"Time for hut {hut_id}: {time.time() - tic}")
 
 logger.info(f"Total runtime {time.time() - tic_start}")
+# quit checker
+checker.quit()
+
+post_to_slack(
+    f"Finished availability check! Total runtime: {time.time() - tic_start:.2f} seconds.\
+    \n{len(huts_not_in_system)} huts not in system.\
+    \nTotal errors: {total_errors}.\
+    \nTotal huts checked: {successful_updates}."
+)
 
 # Save the huts that are not in system
 with open(os.path.join("data", "not_in_system.json"), "w") as outfile:
     json.dump(huts_not_in_system, outfile)
 
-all_avail = pd.concat(all_avail)
 
-# sort the dates (previously unsorted)
-final_avail_table = all_avail[
-    sorted(
-        all_avail.columns,
-        key=lambda x: datetime.datetime(int(x.split(".")[2]), int(x.split(".")[1]), int(x.split(".")[0])),
-    )
-]
-# save to csv
-final_avail_table.index.name = "id"
-final_avail_table.to_csv(os.path.join("availability.csv"))
+if SAVE_TO_CSV:
+    all_avail = pd.concat(all_avail)
+    # sort the dates (previously unsorted)
+    final_avail_table = all_avail[
+        sorted(
+            all_avail.columns,
+            key=lambda x: datetime.datetime(int(x.split(".")[2]), int(x.split(".")[1]), int(x.split(".")[0])),
+        )
+    ]
+    # save to csv
+    final_avail_table.index.name = "id"
+    final_avail_table.to_csv(os.path.join("availability.csv"))
 
-# transform to int (remove error messages)
-final_avail_int = final_avail_table.applymap(convert_non_int_to_zero).reset_index().sort_values("id")
-final_avail_int.to_csv(os.path.join("availability_int.csv"))
-
-# write full table to database
-final_avail_int.set_index("id").to_sql("hut_availability_all", engine, if_exists="replace")
+    # transform to int (remove error messages)
+    final_avail_int = final_avail_table.applymap(convert_non_int_to_zero).reset_index().sort_values("id")
+    final_avail_int.to_csv(os.path.join("availability_int.csv"))
