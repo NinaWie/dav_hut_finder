@@ -10,7 +10,7 @@ import geopandas as gpd
 import pandas as pd
 import psycopg2
 import sqlalchemy
-from flask import Flask, jsonify, render_template, request, send_from_directory, Response
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS, cross_origin
 from sqlalchemy import create_engine
 
@@ -145,7 +145,7 @@ def availability_as_html(availability: pd.DataFrame, filtered_huts: pd.DataFrame
     return render_template("simple.html", tables=[result.to_html(classes="data")], titles=result.columns.values)
 
 
-def table_to_dict(table: pd.DataFrame) -> [Dict]:
+def table_to_dict(table: pd.DataFrame) -> list[Dict]:
     """
     Converts pandas dataframe to list of dicts.
 
@@ -163,7 +163,7 @@ def table_to_dict(table: pd.DataFrame) -> [Dict]:
         table = pd.DataFrame(table)
     # Convert to JSON string and back to handle NaN/Inf properly
     # This ensures all NaN values become null in JSON
-    json_str = table.to_json(orient='records', force_ascii=False)
+    json_str = table.to_json(orient="records", force_ascii=False)
     return json.loads(json_str)
 
 
