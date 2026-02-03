@@ -10,7 +10,7 @@ import geopandas as gpd
 import pandas as pd
 import psycopg2
 import sqlalchemy
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import Flask, jsonify, render_template, request, send_from_directory, Response
 from flask_cors import CORS, cross_origin
 from sqlalchemy import create_engine
 
@@ -158,7 +158,30 @@ def table_to_dict(table: pd.DataFrame) -> [Dict]:
     if table.index.name is not None:
         table.reset_index(inplace=True)
     table.drop(["geometry"], axis=1, errors="ignore", inplace=True)
-    return [row.to_dict() for _, row in table.iterrows()]
+    # Convert GeoDataFrame to regular DataFrame to avoid GeoJSON formatting
+    if isinstance(table, gpd.GeoDataFrame):
+        table = pd.DataFrame(table)
+    # Convert to JSON string and back to handle NaN/Inf properly
+    # This ensures all NaN values become null in JSON
+    json_str = table.to_json(orient='records', force_ascii=False)
+    return json.loads(json_str)
+
+
+def json_response(data: Dict, status: int = 200) -> Response:
+    """
+    Create a JSON response with proper content type and encoding.
+
+    Args:
+        data: Dictionary to serialize as JSON
+        status: HTTP status code
+
+    Returns:
+        Flask Response object
+    """
+    response = Response(
+        json.dumps(data, ensure_ascii=False, allow_nan=False), status=status, mimetype="application/json; charset=utf-8"
+    )
+    return response
 
 
 @app.route("/api/submit", methods=["POST"])
@@ -212,7 +235,7 @@ def submit():
         huts_filtered_and_available["places_avail"] = huts_filtered_and_available["places_avail"].fillna(-1)
         huts_filtered_and_available = huts_filtered_and_available.fillna("-")
         # huts_filtered_and_available = filtered_huts[filtered_huts["id"].isin(available_huts["hut_id"])]
-        return jsonify({"status": "success", "markers": table_to_dict(huts_filtered_and_available)})
+        return json_response({"status": "success", "markers": table_to_dict(huts_filtered_and_available)})
 
     # just return filtered huts without availability check
     else:
@@ -220,7 +243,7 @@ def submit():
             return render_template(
                 "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
             )
-        return jsonify({"status": "success", "markers": table_to_dict(filtered_huts)})
+        return json_response({"status": "success", "markers": table_to_dict(filtered_huts)})
 
 
 @app.route("/api/multi_day", methods=["POST"])
@@ -278,7 +301,7 @@ def multi_day_planning():
         dist = ", ".join([str(round(row[f"distance_day{k}"] / 1000, 2)) + " km" for k in range(1, nr_days)])
         json_dicts.append({"infos": infos, "coordinates": coordinates, "distance": dist})
 
-    return jsonify({"status": "success", "routes": json_dicts, "markers": table_to_dict(filtered_huts)})
+    return json_response({"status": "success", "routes": json_dicts, "markers": table_to_dict(filtered_huts)})
 
 
 def create_app():

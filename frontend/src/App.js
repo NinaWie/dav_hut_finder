@@ -56,11 +56,15 @@ function App() {
   const fetchMarkers = (formData) => {
     if (!formData.longitude || !formData.latitude) return;
 
+    console.log('Fetching markers with data:', formData);
+
     // Prepare data for submission
     const dataToSubmit = { ...formData };
     if (!filterByDate) {
       delete dataToSubmit.date; // Only exclude date if checkbox is unchecked
     }
+
+    console.log('Submitting to /api/submit:', dataToSubmit);
 
     fetch('/api/submit', {
       method: 'POST',
@@ -69,11 +73,28 @@ function App() {
       },
       body: JSON.stringify(dataToSubmit)
     })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.status === 'success') {
-          setMarkers(data.markers);
-          // NOTE: clear polylines? setRoutes([]);
+      .then((response) => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.text();
+      })
+      .then((text) => {
+        console.log('Response text length:', text.length);
+        try {
+          const data = JSON.parse(text);
+          console.log('Parsed data:', data);
+          console.log('Number of markers:', data.markers?.length);
+          if (data.status === 'success') {
+            setMarkers(data.markers);
+            console.log('Markers set successfully');
+            // NOTE: clear polylines? setRoutes([]);
+          }
+        } catch (error) {
+          console.error('JSON Parse Error:', error);
+          console.error('Response text:', text);
+          throw error;
         }
       })
       .catch((error) => {

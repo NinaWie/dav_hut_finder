@@ -134,7 +134,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                 Distance: {localFormData.minDistance} km - {localFormData.maxDistance} km
               </Typography>
               <Slider
-                value={[localFormData.minDistance, localFormData.maxDistance]}
+                value={[parseFloat(localFormData.minDistance) || 0, parseFloat(localFormData.maxDistance) || 250]}
                 onChange={(e, v) => handleSliderChange(e, v, 'distanceRange')}
                 valueLabelDisplay="auto"
                 min={0}
@@ -144,7 +144,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                 Altitude: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
               </Typography>
               <Slider
-                value={[localFormData.minAltitude, localFormData.maxAltitude]}
+                value={[parseFloat(localFormData.minAltitude) || 0, parseFloat(localFormData.maxAltitude) || 4000]}
                 onChange={(e, v) => handleSliderChange(e, v, 'altitudeRange')}
                 valueLabelDisplay="auto"
                 min={0}
@@ -195,7 +195,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                 Distance: {localFormData.minDistance} km - {localFormData.maxDistance} km
               </Typography>
               <Slider
-                value={[localFormData.minDistance, localFormData.maxDistance]}
+                value={[parseFloat(localFormData.minDistance) || 0, parseFloat(localFormData.maxDistance) || 250]}
                 onChange={(e, v) => handleSliderChange(e, v, 'distanceRange')}
                 valueLabelDisplay="auto"
                 min={0}
@@ -205,7 +205,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                 Altitude: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
               </Typography>
               <Slider
-                value={[localFormData.minAltitude, localFormData.maxAltitude]}
+                value={[parseFloat(localFormData.minAltitude) || 0, parseFloat(localFormData.maxAltitude) || 4000]}
                 onChange={(e, v) => handleSliderChange(e, v, 'altitudeRange')}
                 valueLabelDisplay="auto"
                 min={0}
@@ -254,7 +254,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                       Max distance between huts: {localFormData.maxHutDistance} km
                     </Typography>
                     <Slider
-                      value={localFormData.maxHutDistance}
+                      value={parseFloat(localFormData.maxHutDistance) || 13}
                       onChange={(e, v) => handleSingleSliderChange(e, v, 'maxHutDistance')}
                       valueLabelDisplay="auto"
                       min={0}
