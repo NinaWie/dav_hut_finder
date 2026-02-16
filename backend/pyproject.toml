@@ -28,7 +28,9 @@ dependencies = [
     "selenium==4.22.0",
     "waitress==3.0.2",
     "psycopg2",
-    "sqlalchemy"
+    "sqlalchemy",
+    "aiohttp",
+    "slack-sdk>=3.39.0"
 ]
 
 [project.urls]
