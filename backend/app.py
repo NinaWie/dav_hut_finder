@@ -145,7 +145,7 @@ def availability_as_html(availability: pd.DataFrame, filtered_huts: pd.DataFrame
     return render_template("simple.html", tables=[result.to_html(classes="data")], titles=result.columns.values)
 
 
-def table_to_dict(table: pd.DataFrame) -> list[Dict]:
+def table_to_dict(table: pd.DataFrame) -> list[dict[str, Any]]:
     """
     Converts pandas dataframe to list of dicts.
 
@@ -178,9 +178,18 @@ def json_response(data: Dict, status: int = 200) -> Response:
     Returns:
         Flask Response object
     """
-    response = Response(
-        json.dumps(data, ensure_ascii=False, allow_nan=False), status=status, mimetype="application/json; charset=utf-8"
-    )
+    try:
+        payload = json.dumps(data, ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError) as exc:
+        # Fallback: return a JSON error response if data cannot be serialized
+        error_body: Dict[str, Any] = {
+            "error": "Invalid data for JSON serialization",
+            "details": str(exc),
+        }
+        payload = json.dumps(error_body, ensure_ascii=False)
+        if status < 400:
+            status = 500
+    response = Response(payload, status=status, mimetype="application/json; charset=utf-8")
     return response
 
 
