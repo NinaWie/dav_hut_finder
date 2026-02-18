@@ -56,7 +56,7 @@ function App() {
   const fetchMarkers = (formData) => {
     if (!formData.longitude || !formData.latitude) return;
 
-    console.log('Fetching markers with data:', formData);
+    console.log('Fetching markers with data: ', formData);
 
     // Prepare data for submission
     const dataToSubmit = { ...formData };
