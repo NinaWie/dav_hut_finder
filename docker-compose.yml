@@ -18,7 +18,6 @@ services:
     working_dir: /home/maeuschen/backend
     volumes:
       - ./backend:/home/maeuschen/backend
-      - ./db_login.json:/home/maeuschen/backend/db_login.json
     command: flask --debug run
   dev:
     image: hutfinder/dev
@@ -40,7 +39,6 @@ services:
     working_dir: /home/maeuschen/backend
     volumes:
       - ./backend:/home/maeuschen/backend
-      - ./db_login.json:/home/maeuschen/backend/db_login.json
     command: waitress-serve --port=5000 app:app
   prod:
     image: hutfinder/prod
