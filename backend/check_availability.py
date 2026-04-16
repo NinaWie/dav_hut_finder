@@ -9,7 +9,7 @@ from typing import Any, Text
 import numpy as np
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -24,6 +24,13 @@ SERVICE = Service(CHROMEDRIVER_PATH) if os.path.exists(CHROMEDRIVER_PATH) else N
 
 # set up logger
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(levelname)s [%(name)s]: %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 
 class AvailabilityChecker:
@@ -206,18 +213,22 @@ class AvailabilityChecker:
             status (whether the request was successful)
 
         """
+        logger.debug(f"Starting retrieve_from_calendar for hut {hut_id}, num_months={num_months}")
+
         # get url for this hut
         url = self.base_url + str(hut_id) + "/wizard"
         self.driver.get(url)
 
         # click on calendar
         try:
+            logger.debug("Waiting for calendar button...")
             calendar_button = WebDriverWait(self.driver, 5).until(
                 EC.element_to_be_clickable((By.ID, "cy-datePicker__toggle"))
             )
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", calendar_button)
             time.sleep(1)
             calendar_button.click()
+            logger.debug("Calendar button clicked")
         except TimeoutException:
             logger.info("Hut not found (no calendar), break")
             return None, "Error: Not in system!"
@@ -226,45 +237,104 @@ class AvailabilityChecker:
         avail_on_date = {}
 
         for month in range(num_months):
+            logger.debug(f"Processing month {month + 1}/{num_months}")
+
             # Wait for the calendar to load
-            self.wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "mat-calendar-body-cell-content")))
+            try:
+                self.wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "mat-calendar-body-cell-content")))
+                logger.debug("Calendar cells loaded")
+            except TimeoutException:
+                logger.error(f"Calendar cells not found for month {month + 1}")
+                break
 
-            # Extract calendar data
-            calendar_cells = self.driver.find_elements(By.CLASS_NAME, "mat-calendar-body-cell-content")
-
-            for i, cell in enumerate(calendar_cells):
-                date_number_text = cell.text.strip()
-
-                if i == 0:
-                    date_text = (
-                        cell.find_element(By.XPATH, "//button[contains(@class, 'custom-date')]")
-                        .get_attribute("class")
-                        .split("custom-date ")[-1]
-                    )
-                else:
-                    date_text = date_number_text.zfill(2) + date_text[2:]
-
+            # Extract calendar data - re-fetch elements each time to avoid stale references
+            try:
+                calendar_cells = self.driver.find_elements(By.CLASS_NAME, "mat-calendar-body-cell-content")
+                logger.debug(f"Found {len(calendar_cells)} calendar cells")
+            except StaleElementReferenceException as e:
+                logger.error(f"Stale element when getting calendar cells for month {month + 1}: {e}")
+                # Try once more
+                time.sleep(0.5)
                 try:
-                    availability_count_cell = cell.find_element(
-                        By.XPATH, "./following-sibling::div[contains(@class, 'custom-preview')]"
-                    )
-                    availability_count = availability_count_cell.text.strip()
+                    calendar_cells = self.driver.find_elements(By.CLASS_NAME, "mat-calendar-body-cell-content")
+                except Exception as retry_error:
+                    logger.error(f"Failed to get calendar cells on retry: {retry_error}")
+                    break
 
-                except Exception:
-                    availability_count = -1
+            date_text = None
+            for i, cell in enumerate(calendar_cells):
+                try:
+                    # Re-fetch cell text to ensure it's current
+                    date_number_text = cell.text.strip()
 
-                # save in dictionary
-                avail_on_date[date_text] = availability_count
+                    if i == 0:
+                        # Get the date from the first cell's class
+                        try:
+                            date_button = cell.find_element(By.XPATH, "//button[contains(@class, 'custom-date')]")
+                            date_text = date_button.get_attribute("class").split("custom-date ")[-1]
+                        except Exception as e:
+                            logger.warning(f"Could not extract date from first cell: {e}")
+                            continue
+                    else:
+                        if date_text is not None:
+                            date_text = date_number_text.zfill(2) + date_text[2:]
 
-                logger.debug(f"{date_text}: {availability_count}")
+                    if date_text is None:
+                        logger.warning(f"date_text is None for cell {i}, skipping")
+                        continue
+
+                    try:
+                        availability_count_cell = cell.find_element(
+                            By.XPATH, "./following-sibling::div[contains(@class, 'custom-preview')]"
+                        )
+                        availability_count = availability_count_cell.text.strip()
+                    except StaleElementReferenceException:
+                        logger.warning(f"Stale element getting availability for {date_text}, setting to -1")
+                        availability_count = -1
+                    except Exception:
+                        availability_count = -1
+
+                    # save in dictionary
+                    avail_on_date[date_text] = availability_count
+                    logger.debug(f"{date_text}: {availability_count}")
+
+                except StaleElementReferenceException as e:
+                    logger.warning(f"Stale element processing cell {i} in month {month + 1}: {e}")
+                    # Skip this cell and continue with next
+                    continue
+                except Exception as e:
+                    logger.error(f"Unexpected error processing cell {i}: {e}")
+                    continue
 
             if month < num_months - 1:
                 # Click the 'Next month' button
-                next_month_button = next_month_button = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='Next month']"))
-                )
-                next_month_button.click()
+                try:
+                    logger.debug(f"Clicking Next month button (month {month + 1} -> {month + 2})")
+                    next_month_button = self.wait.until(
+                        EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='Next month']"))
+                    )
+                    next_month_button.click()
+                    logger.debug("Next month button clicked")
+                    # Give the calendar time to update
+                    time.sleep(0.5)
+                except StaleElementReferenceException as e:
+                    logger.error(f"Stale element clicking next month button: {e}")
+                    # Try to re-locate and click
+                    try:
+                        time.sleep(0.5)
+                        next_month_button = self.wait.until(
+                            EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='Next month']"))
+                        )
+                        next_month_button.click()
+                        logger.debug("Next month button clicked on retry")
+                    except Exception as retry_error:
+                        logger.error(f"Failed to click next month on retry: {retry_error}")
+                        break
+                except Exception as e:
+                    logger.error(f"Error clicking next month button: {e}")
+                    break
 
+        logger.debug(f"Retrieved {len(avail_on_date)} dates from calendar")
         return avail_on_date, "Success"
 
     def wait_for_table_update(self, old_html: Any):
