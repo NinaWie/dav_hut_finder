@@ -253,8 +253,13 @@ def multi_day_planning():
 
     # compute trip options
     max_dist_between_huts = float(data.get("maxHutDistance", -1)) * 1000  # convert to meters
+    use_beeline_distance = bool(data.get("useBeelineDistance", False))
     trip_options = multi_day_route_finding(
-        date_list, avail_per_date, id_to_hut_name, max_dist_between_huts=max_dist_between_huts
+        date_list,
+        avail_per_date,
+        id_to_hut_name,
+        max_dist_between_huts=max_dist_between_huts,
+        use_beeline_distance=use_beeline_distance,
     )
 
     all_ids_in_trip_options = set()

@@ -10,8 +10,21 @@ from haversine import haversine
 
 DATE_FORMAT_IN, DATE_FORMAT_OUT = "%Y-%m-%d", "%d.%m.%Y"
 
-# load feasible connections
-FEASIBLE_CONNECTIONS = pd.read_csv(os.path.join("data", "feasible_connections.csv"), index_col="id_source")
+HIKING_DISTANCES_PATH = os.path.join("data", "hiking_distances.csv")
+FEASIBLE_CONNECTIONS_PATH = os.path.join("data", "feasible_connections.csv")
+
+# beeline (straight-line) distance between huts, for every pair within max_distance
+FEASIBLE_CONNECTIONS_BEELINE = pd.read_csv(FEASIBLE_CONNECTIONS_PATH, index_col="id_source")
+
+# real hiking-trail distance (build_hiking_distances.py); only contains pairs that have an
+# actual, plausible trail route -- pairs that would require off-trail/glacier travel are
+# intentionally absent, not filled in with beeline distance (see build_hiking_distances.py)
+if os.path.exists(HIKING_DISTANCES_PATH):
+    FEASIBLE_CONNECTIONS_HIKING = pd.read_csv(HIKING_DISTANCES_PATH, index_col="id_source").rename(
+        columns={"hiking_distance_m": "distance"}
+    )
+else:
+    FEASIBLE_CONNECTIONS_HIKING = None
 
 
 def filter_huts(
@@ -91,13 +104,26 @@ def multi_day_route_finding(
     id_to_hut: dict,
     require_unique_huts: bool = True,
     max_dist_between_huts: int = -1,
+    use_beeline_distance: bool = False,
 ) -> pd.DataFrame:
-    """Find all possible combinations of huts for multiple days."""
+    """Find all possible combinations of huts for multiple days.
+
+    Args:
+        use_beeline_distance: if True (or if hiking-trail distances haven't been computed),
+            route using straight-line distance between huts, which allows pairs that would
+            require off-trail/glacier travel. If False, only use hut pairs that have an actual
+            plausible hiking-trail connection (see build_hiking_distances.py).
+    """
+    if use_beeline_distance or FEASIBLE_CONNECTIONS_HIKING is None:
+        base_connections = FEASIBLE_CONNECTIONS_BEELINE
+    else:
+        base_connections = FEASIBLE_CONNECTIONS_HIKING
+
     # filter feasible connections by the ones that are short enough
     if max_dist_between_huts > 0:
-        feasible_connections = FEASIBLE_CONNECTIONS[FEASIBLE_CONNECTIONS["distance"] <= max_dist_between_huts]
+        feasible_connections = base_connections[base_connections["distance"] <= max_dist_between_huts]
     else:
-        feasible_connections = FEASIBLE_CONNECTIONS.copy()
+        feasible_connections = base_connections.copy()
 
     col_names, trip_options = [], pd.DataFrame()
     for i, current_date in enumerate(date_list):

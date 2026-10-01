@@ -135,7 +135,7 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
             mouseover: (e) => {
               const layer = e.target;
               layer.setStyle({ color: 'orange' });
-              layer.bindPopup(`<b>${route.infos}</b>`).openPopup();
+              layer.bindPopup(`<b>${route.infos}</b><br/>Distance: ${route.distance}`).openPopup();
             },
             mouseout: (e) => {
               const layer = e.target;

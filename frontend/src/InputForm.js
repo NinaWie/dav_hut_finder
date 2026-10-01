@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import './InputForm.css';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
-import { Collapse } from '@mui/material';
+import { Collapse, FormControlLabel, Checkbox, Tooltip } from '@mui/material';
 
 
 const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) => {
@@ -49,6 +49,11 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
 
   const handleSingleSliderChange = (_, newValue, name) => {
     setLocalFormData(prev => ({ ...prev, [name]: newValue }));
+  };
+
+  const handleCheckboxChange = (e) => {
+    const { name, checked } = e.target;
+    setLocalFormData(prev => ({ ...prev, [name]: checked }));
   };
 
   const handleSubmit = (e) => {
@@ -264,7 +269,22 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                   </Box>
                 </Box>
               </Box>
-              <Box textAlign="center" mt={2}>
+              <Box textAlign="center" mt={1}>
+                <Tooltip title="Off by default: routes only use pairs of huts with an actual mapped hiking trail between them. Tick this to allow straight-line (beeline) distance instead, e.g. for routes crossing a glacier with no marked trail.">
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="useBeelineDistance"
+                        checked={Boolean(localFormData.useBeelineDistance)}
+                        onChange={handleCheckboxChange}
+                        size="small"
+                      />
+                    }
+                    label="Use beeline distance"
+                  />
+                </Tooltip>
+              </Box>
+              <Box textAlign="center" mt={1}>
                 <Button
                   type="submit"
                   value="multiDay"

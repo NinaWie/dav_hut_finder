@@ -41,6 +41,11 @@ test = [
 linting = [
     "pre-commit==2.17.0"
 ]
+# only needed for the one-time build_hiking_distances script
+routing = [
+    "python-igraph",
+    "scikit-learn"
+]
 
 [build-system]
 requires = ["setuptools>=42", "wheel"]
