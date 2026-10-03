@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -60,14 +60,30 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
     lng: 10.72265625,
   });
 
-  // Track which route is currently hovered
-  const [hoveredRouteIndex, setHoveredRouteIndex] = useState(null);
+  // Store refs to all polylines so we can update their styles
+  const polylineRefs = useRef([]);
 
-  // Determine route color based on hover state
-  const getRouteColor = (routeIndex) => {
-    if (hoveredRouteIndex === null) return 'purple';  // No hover - all purple
-    if (routeIndex === hoveredRouteIndex) return 'black';  // Hovered route - black
-    return '#cccccc';  // Other routes - light grey
+  // Clean up refs when routes change
+  useEffect(() => {
+    polylineRefs.current = [];
+  }, [routes]);
+
+  const handleRouteMouseOver = (index) => {
+    // Set hovered route to black, others to grey
+    polylineRefs.current.forEach((ref, i) => {
+      if (i === index) {
+        ref.setStyle({ color: 'black', weight: 7 });
+      } else {
+        ref.setStyle({ color: '#cccccc', weight: 5 });
+      }
+    });
+  };
+
+  const handleRouteMouseOut = () => {
+    // Reset all to black
+    polylineRefs.current.forEach((ref) => {
+      ref.setStyle({ color: 'black', weight: 5 });
+    });
   };
 
   return (
@@ -137,18 +153,21 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
       {routes.map((route, index) => (
         <Polyline
           key={index}
+          ref={(el) => {
+            if (el) polylineRefs.current[index] = el.leafletElement;
+          }}
           positions={route.coordinates}
-          color={getRouteColor(index)}
+          color="black"
           weight={5}
           opacity={0.5}
           eventHandlers={{
             mouseover: (e) => {
-              setHoveredRouteIndex(index);
+              handleRouteMouseOver(index);
               const ascentLine = route.ascent ? `<br/>Ascent/Descent: ${route.ascent}` : '';
               e.target.bindPopup(`<b>${route.infos}</b><br/>Distance: ${route.distance}${ascentLine}`).openPopup();
             },
             mouseout: (e) => {
-              setHoveredRouteIndex(null);
+              handleRouteMouseOut();
               e.target.closePopup();
             },
           }}
