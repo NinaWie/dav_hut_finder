@@ -69,12 +69,14 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
   }, [routes]);
 
   const handleRouteMouseOver = (index) => {
-    // Set hovered route to black, others to grey
+    // Set hovered route to black (thicker), others to grey
     polylineRefs.current.forEach((ref, i) => {
-      if (i === index) {
-        ref.setStyle({ color: 'black', weight: 7 });
-      } else {
-        ref.setStyle({ color: '#cccccc', weight: 5 });
+      if (ref) {
+        if (i === index) {
+          ref.setStyle({ color: 'black', weight: 7 });
+        } else {
+          ref.setStyle({ color: '#cccccc', weight: 5 });
+        }
       }
     });
   };
@@ -82,7 +84,9 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
   const handleRouteMouseOut = () => {
     // Reset all to black
     polylineRefs.current.forEach((ref) => {
-      ref.setStyle({ color: 'black', weight: 5 });
+      if (ref) {
+        ref.setStyle({ color: 'black', weight: 5 });
+      }
     });
   };
 
@@ -153,15 +157,14 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
       {routes.map((route, index) => (
         <Polyline
           key={index}
-          ref={(el) => {
-            if (el) polylineRefs.current[index] = el.leafletElement;
-          }}
           positions={route.coordinates}
           color="black"
           weight={5}
           opacity={0.5}
           eventHandlers={{
             mouseover: (e) => {
+              // Store reference and update styles
+              polylineRefs.current[index] = e.target;
               handleRouteMouseOver(index);
               const ascentLine = route.ascent ? `<br/>Ascent/Descent: ${route.ascent}` : '';
               e.target.bindPopup(`<b>${route.infos}</b><br/>Distance: ${route.distance}${ascentLine}`).openPopup();
