@@ -288,9 +288,9 @@ def multi_day_planning():
                 # Get minimum availability for this hut on this day across all matching routes
                 day_avail = trip_options.loc[mask, places_col].min()
                 min_avail = min(min_avail, day_avail)
-        
+
         hut_min_availability[hut_id] = min_avail if min_avail != np.inf else -1
-    
+
     # Add minimum availability to filtered huts
     filtered_huts["places_avail"] = filtered_huts["id"].map(hut_min_availability).fillna(-1)
     filtered_huts["link"] = filtered_huts["id"].apply(
@@ -313,11 +313,14 @@ def multi_day_planning():
         )
         dist = ", ".join([str(round(row[f"distance_day{k}"] / 1000, 2)) + " km" for k in range(1, nr_days)])
         if "ascent_day1" in row:
-            ascent = ", ".join([f"+{int(row[f'ascent_day{k}'])}m/-{int(row[f'descent_day{k}'])}m" for k in range(1, nr_days)])
+            ascent = ", ".join(
+                [f"+{int(row[f'ascent_day{k}'])}m/-{int(row[f'descent_day{k}'])}m" for k in range(1, nr_days)]
+            )
         else:
             ascent = None
         json_dicts.append({"infos": infos, "coordinates": coordinates, "distance": dist, "ascent": ascent})
 
+    filtered_huts = filtered_huts.fillna("-")
     return jsonify({"status": "success", "routes": json_dicts, "markers": table_to_dict(filtered_huts)})
 
 

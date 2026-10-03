@@ -72,7 +72,7 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
     // Bring this route to the front and make it thicker
     if (polylineRefs.current[index]) {
       polylineRefs.current[index].bringToFront();
-      polylineRefs.current[index].setStyle({ weight: 8 });
+      polylineRefs.current[index].setStyle({ weight: 13 });
     }
   };
 
@@ -155,7 +155,7 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
           positions={route.coordinates}
           color="black"
           weight={5}
-          opacity={0.5}
+          opacity={1}
           eventHandlers={{
             mouseover: (e) => {
               // Store reference and update styles
