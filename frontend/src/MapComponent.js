@@ -135,7 +135,8 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
             mouseover: (e) => {
               const layer = e.target;
               layer.setStyle({ color: 'orange' });
-              layer.bindPopup(`<b>${route.infos}</b><br/>Distance: ${route.distance}`).openPopup();
+              const ascentLine = route.ascent ? `<br/>Ascent/Descent: ${route.ascent}` : '';
+              layer.bindPopup(`<b>${route.infos}</b><br/>Distance: ${route.distance}${ascentLine}`).openPopup();
             },
             mouseout: (e) => {
               const layer = e.target;

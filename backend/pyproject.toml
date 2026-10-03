@@ -44,7 +44,8 @@ linting = [
 # only needed for the one-time build_hiking_distances script
 routing = [
     "python-igraph",
-    "scikit-learn"
+    "scikit-learn",
+    "srtm.py"
 ]
 
 [build-system]

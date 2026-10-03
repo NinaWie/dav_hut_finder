@@ -38,7 +38,9 @@ function App() {
     startDate: defaultDates.startDate,
     endDate: defaultDates.endDate,
     maxHutDistance: 13,
-    useBeelineDistance: false
+    useBeelineDistance: false,
+    minAscent: 0,
+    maxAscent: 3000
   });
   const [loading, setLoading] = useState(false);
   const [tabIndex, setTabIndex] = useState(0);

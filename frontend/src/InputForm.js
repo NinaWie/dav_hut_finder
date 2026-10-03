@@ -43,7 +43,8 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
     setLocalFormData(prev => ({
       ...prev,
       ...(name === 'distanceRange' ? { minDistance: min, maxDistance: max } : {}),
-      ...(name === 'altitudeRange' ? { minAltitude: min, maxAltitude: max } : {})
+      ...(name === 'altitudeRange' ? { minAltitude: min, maxAltitude: max } : {}),
+      ...(name === 'ascentRange' ? { minAscent: min, maxAscent: max } : {})
     }));
   };
 
@@ -265,6 +266,19 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                       min={0}
                       max={13}
                       step={1}
+                    />
+                  </Box>
+                  <Box mt={4}>
+                    <Typography gutterBottom align="center">
+                      Ascent between huts: {localFormData.minAscent} m - {localFormData.maxAscent} m
+                    </Typography>
+                    <Slider
+                      value={[localFormData.minAscent, localFormData.maxAscent]}
+                      onChange={(e, v) => handleSliderChange(e, v, 'ascentRange')}
+                      valueLabelDisplay="auto"
+                      min={0}
+                      max={3000}
+                      step={50}
                     />
                   </Box>
                 </Box>

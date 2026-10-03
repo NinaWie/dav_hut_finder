@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Text
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import psycopg2
 import sqlalchemy
@@ -254,12 +255,16 @@ def multi_day_planning():
     # compute trip options
     max_dist_between_huts = float(data.get("maxHutDistance", -1)) * 1000  # convert to meters
     use_beeline_distance = bool(data.get("useBeelineDistance", False))
+    min_ascent = float(data.get("minAscent", 0))
+    max_ascent = float(data.get("maxAscent", np.inf))
     trip_options = multi_day_route_finding(
         date_list,
         avail_per_date,
         id_to_hut_name,
         max_dist_between_huts=max_dist_between_huts,
         use_beeline_distance=use_beeline_distance,
+        min_ascent=min_ascent,
+        max_ascent=max_ascent,
     )
 
     all_ids_in_trip_options = set()
@@ -281,7 +286,11 @@ def multi_day_planning():
             [row[f"name_day{k}"] + " (" + str(int(row[f"places_day{k}"])) + " spots)" for k in range(nr_days)]
         )
         dist = ", ".join([str(round(row[f"distance_day{k}"] / 1000, 2)) + " km" for k in range(1, nr_days)])
-        json_dicts.append({"infos": infos, "coordinates": coordinates, "distance": dist})
+        if "ascent_day1" in row:
+            ascent = ", ".join([f"+{int(row[f'ascent_day{k}'])}m/-{int(row[f'descent_day{k}'])}m" for k in range(1, nr_days)])
+        else:
+            ascent = None
+        json_dicts.append({"infos": infos, "coordinates": coordinates, "distance": dist, "ascent": ascent})
 
     return jsonify({"status": "success", "routes": json_dicts, "markers": table_to_dict(filtered_huts)})
 

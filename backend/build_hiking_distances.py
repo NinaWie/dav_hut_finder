@@ -2,15 +2,18 @@
 
 Produces data/hiking_distances.csv: a strict subset of data/feasible_connections.csv (which has
 beeline distances) restricted to the pairs that have an actual, plausible hiking-trail route
-between them. Pairs that would require off-trail/glacier travel (no mapped route, or only an
-absurd valley-road detour) are intentionally NOT included here -- the app lets users opt back
-into beeline-distance routing for those via a toggle rather than silently mixing the two.
+between them, with columns for distance plus cumulative ascent/descent (meters) along that route,
+looked up from SRTM elevation data. Pairs that would require off-trail/glacier travel (no mapped
+route, or only an absurd valley-road detour) are intentionally NOT included here -- the app lets
+users opt back into beeline-distance routing for those via a toggle rather than silently mixing
+the two.
 
 Usage:
     python build_hiking_distances.py
 
 Requires (only for this script, not for the Flask app):
-    - pip packages: pyrosm, python-igraph, scikit-learn (see the "routing" extra in pyproject.toml)
+    - pip packages: pyrosm, python-igraph, scikit-learn, srtm.py (see the "routing" extra in
+      pyproject.toml)
     - the `osmium` CLI (e.g. `brew install osmium-tool`) to pre-filter the OSM extract
 """
 
@@ -22,6 +25,7 @@ import igraph
 import numpy as np
 import pandas as pd
 import requests
+import srtm
 from pyrosm import OSM
 from sklearn.neighbors import BallTree
 
@@ -55,6 +59,9 @@ MAX_SNAP_DISTANCE_M = 2000
 # the output entirely rather than reporting an implausible hiking distance (see module docstring).
 MAX_DETOUR_RATIO = 6
 MAX_DETOUR_FLOOR_M = 15_000
+# resample the path to this spacing before looking up elevations: DEM grid noise gets amplified
+# into spurious ascent/descent if we sample every (densely spaced) path node directly
+ELEVATION_SAMPLE_INTERVAL_M = 100
 
 
 def download_osm_extract(url: str = OSM_EXTRACT_URL, out_path: str = OSM_EXTRACT_PATH) -> str:
@@ -157,15 +164,57 @@ def snap_huts_to_network(huts: gpd.GeoDataFrame, graph_nodes: pd.DataFrame) -> p
     )
 
 
+def _haversine_m(lat1: np.ndarray, lon1: np.ndarray, lat2: np.ndarray, lon2: np.ndarray) -> np.ndarray:
+    """Vectorized haversine distance in meters."""
+    lat1, lon1, lat2, lon2 = (np.radians(a) for a in (lat1, lon1, lat2, lon2))
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+    return 2 * EARTH_RADIUS_M * np.arcsin(np.sqrt(a))
+
+
+def compute_elevation_profile(
+    path_vertices: list[int], node_lat: np.ndarray, node_lon: np.ndarray, elevation_data
+) -> tuple[float, float]:
+    """Compute cumulative ascent/descent (meters) along a path using SRTM elevation data."""
+    lat, lon = node_lat[path_vertices], node_lon[path_vertices]
+    if len(lat) < 2:
+        return 0.0, 0.0
+
+    seg_dist = _haversine_m(lat[:-1], lon[:-1], lat[1:], lon[1:])
+    cum_dist = np.concatenate([[0.0], np.cumsum(seg_dist)])
+    total_dist = cum_dist[-1]
+    if total_dist == 0:
+        return 0.0, 0.0
+
+    n_samples = max(2, int(total_dist // ELEVATION_SAMPLE_INTERVAL_M) + 1)
+    sample_dists = np.linspace(0, total_dist, n_samples)
+    sample_lat = np.interp(sample_dists, cum_dist, lat)
+    sample_lon = np.interp(sample_dists, cum_dist, lon)
+
+    elevations = [elevation_data.get_elevation(float(la), float(lo)) for la, lo in zip(sample_lat, sample_lon)]
+    elevations = [e for e in elevations if e is not None]
+    if len(elevations) < 2:
+        return 0.0, 0.0
+
+    diffs = np.diff(elevations)
+    return float(diffs[diffs > 0].sum()), float(-diffs[diffs < 0].sum())
+
+
 def compute_hiking_distances(
-    feasible_connections: pd.DataFrame, hut_to_node: pd.DataFrame, graph
+    feasible_connections: pd.DataFrame,
+    hut_to_node: pd.DataFrame,
+    graph,
+    graph_nodes: pd.DataFrame,
+    elevation_data,
 ) -> pd.DataFrame:
-    """Compute network-based hiking distance for every pair in feasible_connections.
+    """Compute network-based hiking distance and elevation gain/loss for every feasible pair.
 
     Groups targets by source hut so we only run one Dijkstra search per distinct source node.
     """
     results = []
     valid_hut_ids = set(hut_to_node.index)
+    node_lat = graph_nodes["lat"].to_numpy()
+    node_lon = graph_nodes["lon"].to_numpy()
 
     for source_id, targets in feasible_connections.groupby("id_source"):
         target_ids = [t for t in targets["id_target"] if t in valid_hut_ids]
@@ -173,29 +222,51 @@ def compute_hiking_distances(
             continue
         beeline_by_target = dict(zip(targets["id_target"], targets["distance"]))
 
-        source_node = hut_to_node.loc[source_id, "node_index"]
+        source_node = int(hut_to_node.loc[source_id, "node_index"])
         source_snap = hut_to_node.loc[source_id, "snap_distance_m"]
         if source_snap > MAX_SNAP_DISTANCE_M:
             continue
 
         # igraph's distances() rejects duplicate target vertices (e.g. two huts snapping to the
         # same nearest node), so dedupe and look results back up per node index
-        target_nodes = hut_to_node.loc[target_ids, "node_index"].tolist()
+        target_nodes = [int(n) for n in hut_to_node.loc[target_ids, "node_index"]]
         unique_target_nodes = sorted(set(target_nodes))
-        path_lengths = graph.distances(source=int(source_node), target=unique_target_nodes, weights="length")[0]
+        path_lengths = graph.distances(source=source_node, target=unique_target_nodes, weights="length")[0]
         dist_by_node = dict(zip(unique_target_nodes, path_lengths))
 
+        # filter to viable targets (distance/detour checks) before the expensive path + elevation
+        # lookups below
+        viable_targets = []
         for target_id in target_ids:
             target_snap = hut_to_node.loc[target_id, "snap_distance_m"]
-            node_dist = dist_by_node[hut_to_node.loc[target_id, "node_index"]]
+            node_dist = dist_by_node[int(hut_to_node.loc[target_id, "node_index"])]
             if target_snap > MAX_SNAP_DISTANCE_M or not np.isfinite(node_dist):
                 continue
             hiking_distance = node_dist + source_snap + target_snap
             detour_cap = max(MAX_DETOUR_RATIO * beeline_by_target[target_id], MAX_DETOUR_FLOOR_M)
             if hiking_distance > detour_cap:
                 continue
+            viable_targets.append((target_id, hiking_distance))
+        if not viable_targets:
+            continue
+
+        viable_target_nodes = sorted({int(hut_to_node.loc[t, "node_index"]) for t, _ in viable_targets})
+        paths = graph.get_shortest_paths(source_node, to=viable_target_nodes, weights="length", output="vpath")
+        path_by_node = dict(zip(viable_target_nodes, paths))
+
+        for target_id, hiking_distance in viable_targets:
+            target_node = int(hut_to_node.loc[target_id, "node_index"])
+            ascent_m, descent_m = compute_elevation_profile(
+                path_by_node[target_node], node_lat, node_lon, elevation_data
+            )
             results.append(
-                {"id_source": source_id, "id_target": target_id, "hiking_distance_m": int(hiking_distance)}
+                {
+                    "id_source": source_id,
+                    "id_target": target_id,
+                    "hiking_distance_m": int(hiking_distance),
+                    "ascent_m": int(round(ascent_m)),
+                    "descent_m": int(round(descent_m)),
+                }
             )
 
     return pd.DataFrame(results)
@@ -213,9 +284,10 @@ def main():
     print(f"Graph has {graph.vcount()} nodes and {graph.ecount()} edges")
 
     hut_to_node = snap_huts_to_network(huts, graph_nodes)
+    elevation_data = srtm.get_data()
 
     print(f"Computing hiking distances for {len(feasible_connections)} feasible pairs...")
-    hiking_distances = compute_hiking_distances(feasible_connections, hut_to_node, graph)
+    hiking_distances = compute_hiking_distances(feasible_connections, hut_to_node, graph, graph_nodes, elevation_data)
 
     # inner join: pairs with no viable trail route (or an implausible detour) are dropped
     # entirely rather than falling back to beeline -- see build_hiking_distances.py docstring
