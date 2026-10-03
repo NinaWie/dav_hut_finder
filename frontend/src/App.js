@@ -4,6 +4,7 @@ import MapComponent from './MapComponent';
 import InputForm from './InputForm';
 import { Dialog, Box, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import EmojiPeopleIcon from '@mui/icons-material/EmojiPeople';
+import InfoIcon from '@mui/icons-material/Info';
 
 const getDefaultDates = () => {
   const today = new Date();
@@ -45,6 +46,7 @@ function App() {
   });
   const [loading, setLoading] = useState(false);
   const [tabIndex, setTabIndex] = useState(0);
+  const [openInfoDialog, setOpenInfoDialog] = useState(false);
 
   const handleTabChange = (event, newValue) => {
     setTabIndex(newValue);
@@ -139,6 +141,36 @@ function App() {
     setFormData(newFormData);
   };
 
+  const downloadRoutesAsCSV = () => {
+    if (!routes || routes.length === 0) return;
+
+    // Create CSV header
+    const headers = ['Route #', 'Huts', 'Distance', 'Ascent/Descent'];
+    const rows = routes.map((route, index) => [
+      index + 1,
+      route.infos,
+      route.distance,
+      route.ascent || 'N/A'
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `multi-day-routes-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="App">
       <div className="container">
@@ -152,6 +184,25 @@ function App() {
           tabIndex={tabIndex}
           handleTabChange={handleTabChange}
         />
+        {routes.length > 0 && tabIndex === 1 && (
+          <Box sx={{ p: 2, textAlign: 'center', display: 'flex', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
+            <Button 
+              variant="contained" 
+              color="success"
+              onClick={downloadRoutesAsCSV}
+            >
+              Download Routes as CSV
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<InfoIcon />}
+              onClick={() => setOpenInfoDialog(true)}
+              size="small"
+            >
+              Info
+            </Button>
+          </Box>
+        )}
         <Box flex={1} display="flex">
           <MapComponent setCoordinates={setCoordinates} markers={markers} routes={routes} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} radiusKm={Number(formData.maxDistance)}/>
         </Box>
@@ -167,6 +218,28 @@ function App() {
         <DialogActions>
           <Button onClick={handleCloseWelcomeDialog} variant="contained" color="primary">
             Got it!
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openInfoDialog} onClose={() => setOpenInfoDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Multi-Day Route Planning - Info</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <Typography variant="body2">
+              We filtered for huts within 20km beeline distance as candidate pairs for consecutive days of your hike.
+            </Typography>
+            <Typography variant="body2">
+              We computed the distance between huts as the shortest distance in the graph of walking paths. Careful: this may contain glacier crossings or climbing paths that would require mountaineering skills!
+            </Typography>
+            <Typography variant="body2">
+              Ascent and descent refer to the shortest-distance route using SRTM elevation data. Of course, there might be other longer routes with less ascent or descent depending on your preferences.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenInfoDialog(false)} color="primary">
+            Close
           </Button>
         </DialogActions>
       </Dialog>
