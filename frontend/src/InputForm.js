@@ -44,17 +44,24 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
       ...prev,
       ...(name === 'distanceRange' ? { minDistance: min, maxDistance: max } : {}),
       ...(name === 'altitudeRange' ? { minAltitude: min, maxAltitude: max } : {}),
+      ...(name === 'hutDistanceRange' ? { minHutDistance: min, maxHutDistance: max } : {}),
       ...(name === 'ascentRange' ? { minAscent: min, maxAscent: max } : {})
     }));
   };
 
-  const handleSingleSliderChange = (_, newValue, name) => {
-    setLocalFormData(prev => ({ ...prev, [name]: newValue }));
-  };
+  const maxHutDistanceLimit = localFormData.useBeelineDistance ? 20 : 40;
 
   const handleCheckboxChange = (e) => {
     const { name, checked } = e.target;
-    setLocalFormData(prev => ({ ...prev, [name]: checked }));
+    setLocalFormData(prev => {
+      const next = { ...prev, [name]: checked };
+      if (name === 'useBeelineDistance') {
+        const limit = checked ? 20 : 40;
+        next.minHutDistance = Math.min(Number(prev.minHutDistance), limit);
+        next.maxHutDistance = Math.min(Number(prev.maxHutDistance), limit);
+      }
+      return next;
+    });
   };
 
   const handleSubmit = (e) => {
@@ -137,7 +144,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
           <Box width="100%" display="flex" justifyContent="center" p={isMobile ? 1 : 2}>
             <Box width="100%" maxWidth={isMobile ? '90%' : 600}>
               <Typography gutterBottom align="center">
-                Distance: {localFormData.minDistance} km - {localFormData.maxDistance} km
+                Distance from position: {localFormData.minDistance} km - {localFormData.maxDistance} km
               </Typography>
               <Slider
                 value={[localFormData.minDistance, localFormData.maxDistance]}
@@ -147,7 +154,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                 max={500}
               />
               <Typography gutterBottom align="center">
-                Altitude: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
+                Hut altitude: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
               </Typography>
               <Slider
                 value={[localFormData.minAltitude, localFormData.maxAltitude]}
@@ -196,119 +203,125 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
         {/* Multi-Day Tab */}
         {tabIndex === 1 && (
           <Box width="100%" display="flex" justifyContent="center" p={isMobile ? 1 : 2}>
-            <Box width="100%" maxWidth={isMobile ? '90%' : 600}>
-              <Typography gutterBottom align="center">
-                Distance: {localFormData.minDistance} km - {localFormData.maxDistance} km
-              </Typography>
-              <Slider
-                value={[localFormData.minDistance, localFormData.maxDistance]}
-                onChange={(e, v) => handleSliderChange(e, v, 'distanceRange')}
-                valueLabelDisplay="auto"
-                min={0}
-                max={500}
-              />
-              <Typography gutterBottom align="center">
-                Altitude: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
-              </Typography>
-              <Slider
-                value={[localFormData.minAltitude, localFormData.maxAltitude]}
-                onChange={(e, v) => handleSliderChange(e, v, 'altitudeRange')}
-                valueLabelDisplay="auto"
-                min={0}
-                max={4000}
-                step={10}
-              />
-              <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2} mt={2}>
-                <Box flex={1}>
-                  <TextField
-                    fullWidth
-                    label="Start Date"
-                    type="date"
-                    name="startDate"
-                    value={localFormData.startDate}
-                    onChange={handleChange}
-                    InputLabelProps={{ shrink: true }}
-                    size="small"
-                  />
-                  <Box mt={2}>
-                    <TextField
-                      fullWidth
-                      label="End Date"
-                      type="date"
-                      name="endDate"
-                      value={localFormData.endDate}
-                      onChange={handleChange}
-                      InputLabelProps={{ shrink: true }}
-                      size="small"
-                      error={showError}
-                      helperText={showError ? "Start date must be before end date" : ""}
+            <Box
+              width="100%"
+              maxWidth={isMobile ? '90%' : 900}
+              display="flex"
+              flexDirection={{ xs: 'column', sm: 'row' }}
+              gap={isMobile ? 1 : 4}
+            >
+              <Box flex={1} display="flex" flexDirection="column" gap={2}>
+                <TextField
+                  fullWidth
+                  label="Start Date"
+                  type="date"
+                  name="startDate"
+                  value={localFormData.startDate}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                />
+                <TextField
+                  fullWidth
+                  label="End Date"
+                  type="date"
+                  name="endDate"
+                  value={localFormData.endDate}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  error={showError}
+                  helperText={showError ? "Start date must be before end date" : ""}
+                />
+                <TextField
+                  fullWidth
+                  label="Minimal Spaces"
+                  type="number"
+                  name="minSpaces"
+                  value={localFormData.minSpaces}
+                  onChange={handleChange}
+                  size="small"
+                />
+                <Box textAlign="center">
+                  <Tooltip title="Off by default: routes only use pairs of huts with an actual mapped hiking trail between them. Tick this to allow straight-line (beeline) distance instead, e.g. for routes crossing a glacier with no marked trail.">
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          name="useBeelineDistance"
+                          checked={Boolean(localFormData.useBeelineDistance)}
+                          onChange={handleCheckboxChange}
+                          size="small"
+                        />
+                      }
+                      label="Use beeline distance"
                     />
-                  </Box>
+                  </Tooltip>
                 </Box>
-                <Box flex={1}>
-                  <TextField
-                    fullWidth
-                    label="Minimal Spaces"
-                    type="number"
-                    name="minSpaces"
-                    value={localFormData.minSpaces}
-                    onChange={handleChange}
+                <Box textAlign="center">
+                  <Button
+                    type="submit"
+                    value="multiDay"
+                    variant="contained"
+                    disabled={!isDateRangeValid() || loading}
+                    startIcon={loading ? <CircularProgress size={isMobile ? 16 : 20} /> : null}
                     size="small"
-                  />
-                  <Box mt={4}>
-                    <Typography gutterBottom align="center">
-                      Max distance between huts: {localFormData.maxHutDistance} km
-                    </Typography>
-                    <Slider
-                      value={localFormData.maxHutDistance}
-                      onChange={(e, v) => handleSingleSliderChange(e, v, 'maxHutDistance')}
-                      valueLabelDisplay="auto"
-                      min={0}
-                      max={13}
-                      step={1}
-                    />
-                  </Box>
-                  <Box mt={4}>
-                    <Typography gutterBottom align="center">
+                  >
+                    Find Multi-Day Options
+                  </Button>
+                </Box>
+              </Box>
+              <Box flex={1}>
+                <Typography align="center" variant="body2">
+                  Distance from position: {localFormData.minDistance} km - {localFormData.maxDistance} km
+                </Typography>
+                <Slider
+                  value={[localFormData.minDistance, localFormData.maxDistance]}
+                  onChange={(e, v) => handleSliderChange(e, v, 'distanceRange')}
+                  valueLabelDisplay="auto"
+                  size="small"
+                  min={0}
+                  max={500}
+                />
+                <Typography align="center" variant="body2">
+                  Hut altitude: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
+                </Typography>
+                <Slider
+                  value={[localFormData.minAltitude, localFormData.maxAltitude]}
+                  onChange={(e, v) => handleSliderChange(e, v, 'altitudeRange')}
+                  valueLabelDisplay="auto"
+                  size="small"
+                  min={0}
+                  max={4000}
+                  step={10}
+                />
+                <Typography align="center" variant="body2">
+                  Distance between huts: {localFormData.minHutDistance} km - {localFormData.maxHutDistance} km
+                </Typography>
+                <Slider
+                  value={[Number(localFormData.minHutDistance), Number(localFormData.maxHutDistance)]}
+                  onChange={(e, v) => handleSliderChange(e, v, 'hutDistanceRange')}
+                  valueLabelDisplay="auto"
+                  size="small"
+                  min={0}
+                  max={maxHutDistanceLimit}
+                  step={1}
+                />
+                {!localFormData.useBeelineDistance && (
+                  <>
+                    <Typography align="center" variant="body2">
                       Ascent between huts: {localFormData.minAscent} m - {localFormData.maxAscent} m
                     </Typography>
                     <Slider
                       value={[localFormData.minAscent, localFormData.maxAscent]}
                       onChange={(e, v) => handleSliderChange(e, v, 'ascentRange')}
                       valueLabelDisplay="auto"
+                      size="small"
                       min={0}
                       max={3000}
                       step={50}
                     />
-                  </Box>
-                </Box>
-              </Box>
-              <Box textAlign="center" mt={1}>
-                <Tooltip title="Off by default: routes only use pairs of huts with an actual mapped hiking trail between them. Tick this to allow straight-line (beeline) distance instead, e.g. for routes crossing a glacier with no marked trail.">
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        name="useBeelineDistance"
-                        checked={Boolean(localFormData.useBeelineDistance)}
-                        onChange={handleCheckboxChange}
-                        size="small"
-                      />
-                    }
-                    label="Use beeline distance"
-                  />
-                </Tooltip>
-              </Box>
-              <Box textAlign="center" mt={1}>
-                <Button
-                  type="submit"
-                  value="multiDay"
-                  variant="contained"
-                  disabled={!isDateRangeValid() || loading}
-                  startIcon={loading ? <CircularProgress size={isMobile ? 16 : 20} /> : null}
-                  size="small"
-                >
-                  Find Multi-Day Options
-                </Button>
+                  </>
+                )}
               </Box>
             </Box>
           </Box>

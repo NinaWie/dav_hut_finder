@@ -103,6 +103,7 @@ def multi_day_route_finding(
     avail_per_date: pd.DataFrame,
     id_to_hut: dict,
     require_unique_huts: bool = True,
+    min_dist_between_huts: float = 0,
     max_dist_between_huts: int = -1,
     use_beeline_distance: bool = False,
     min_ascent: int = 0,
@@ -130,6 +131,8 @@ def multi_day_route_finding(
         feasible_connections = base_connections[base_connections["distance"] <= max_dist_between_huts]
     else:
         feasible_connections = base_connections.copy()
+    if min_dist_between_huts > 0:
+        feasible_connections = feasible_connections[feasible_connections["distance"] >= min_dist_between_huts]
 
     # ascent_m is only available for the hiking-trail dataset, not the beeline one
     if "ascent_m" in feasible_connections.columns and (min_ascent > 0 or max_ascent < np.inf):

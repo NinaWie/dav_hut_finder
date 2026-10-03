@@ -60,8 +60,14 @@ MAX_SNAP_DISTANCE_M = 2000
 MAX_DETOUR_RATIO = 6
 MAX_DETOUR_FLOOR_M = 15_000
 # resample the path to this spacing before looking up elevations: DEM grid noise gets amplified
-# into spurious ascent/descent if we sample every (densely spaced) path node directly
-ELEVATION_SAMPLE_INTERVAL_M = 100
+# into spurious ascent/descent if we sample every (densely spaced) path node directly.
+# Calibrated against a known Komoot route (Ringelspitzhuette<->Calandahuette, 850m/760m asc/desc):
+# interval=100/threshold=10 overestimated by ~250m; interval=200/threshold=25 gets within ~50m.
+ELEVATION_SAMPLE_INTERVAL_M = 200
+# ignore elevation swings smaller than this (meters) before counting them as real gain/loss --
+# SRTM has several meters of vertical noise per sample, which otherwise inflates cumulative
+# ascent/descent far above the true value (same "hysteresis" technique GPS/hiking tools use)
+ELEVATION_NOISE_THRESHOLD_M = 25
 
 
 def download_osm_extract(url: str = OSM_EXTRACT_URL, out_path: str = OSM_EXTRACT_PATH) -> str:
@@ -172,6 +178,26 @@ def _haversine_m(lat1: np.ndarray, lon1: np.ndarray, lat2: np.ndarray, lon2: np.
     return 2 * EARTH_RADIUS_M * np.arcsin(np.sqrt(a))
 
 
+def _cumulative_ascent_descent(elevations: list[float], threshold: float) -> tuple[float, float]:
+    """Sum ascent/descent with a noise threshold (hysteresis), ignoring swings smaller than it.
+
+    Naively summing every up/down between noisy DEM samples hugely overcounts cumulative gain;
+    this only counts a climb/descent once it has moved `threshold` meters away from the last
+    local extreme, same technique GPS/hiking tools use for SRTM-derived elevation profiles.
+    """
+    ascent, descent = 0.0, 0.0
+    reference = elevations[0]
+    for elevation in elevations[1:]:
+        diff = elevation - reference
+        if diff >= threshold:
+            ascent += diff
+            reference = elevation
+        elif diff <= -threshold:
+            descent += -diff
+            reference = elevation
+    return ascent, descent
+
+
 def compute_elevation_profile(
     path_vertices: list[int], node_lat: np.ndarray, node_lon: np.ndarray, elevation_data
 ) -> tuple[float, float]:
@@ -196,8 +222,7 @@ def compute_elevation_profile(
     if len(elevations) < 2:
         return 0.0, 0.0
 
-    diffs = np.diff(elevations)
-    return float(diffs[diffs > 0].sum()), float(-diffs[diffs < 0].sum())
+    return _cumulative_ascent_descent(elevations, ELEVATION_NOISE_THRESHOLD_M)
 
 
 def compute_hiking_distances(

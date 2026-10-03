@@ -37,6 +37,7 @@ function App() {
     minSpaces: '1',
     startDate: defaultDates.startDate,
     endDate: defaultDates.endDate,
+    minHutDistance: 0,
     maxHutDistance: 13,
     useBeelineDistance: false,
     minAscent: 0,
