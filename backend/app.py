@@ -217,6 +217,7 @@ def submit():
 
     # just return filtered huts without availability check
     else:
+        filtered_huts = filtered_huts.fillna("-")
         if DEBUG:
             return render_template(
                 "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values

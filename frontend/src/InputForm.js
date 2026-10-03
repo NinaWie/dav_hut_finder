@@ -257,7 +257,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange, rou
                     />
                   </Tooltip>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', flexWrap: 'nowrap' }}>
                   <Button
                     type="submit"
                     value="multiDay"
@@ -269,8 +269,8 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange, rou
                     Find Multi-Day Options
                   </Button>
                   {routes.length > 0 && (
-                    <Button 
-                      variant="contained" 
+                    <Button
+                      variant="contained"
                       color="success"
                       onClick={downloadRoutesAsCSV}
                       size="small"
