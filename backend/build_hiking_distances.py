@@ -1,12 +1,11 @@
 """One-time script to compute real hiking-trail distances between huts.
 
-Produces data/hiking_distances.csv: a strict subset of data/feasible_connections.csv (which has
-beeline distances) restricted to the pairs that have an actual, plausible hiking-trail route
-between them, with columns for distance plus cumulative ascent/descent (meters) along that route,
-looked up from SRTM elevation data. Pairs that would require off-trail/glacier travel (no mapped
-route, or only an absurd valley-road detour) are intentionally NOT included here -- the app lets
-users opt back into beeline-distance routing for those via a toggle rather than silently mixing
-the two.
+Produces data/hiking_distances.csv: every hut pair within MAX_BEELINE_DISTANCE_M (haversine)
+with its beeline distance, plus hiking-trail distance and cumulative ascent/descent (meters, from
+SRTM elevation data) for pairs that have an actual, plausible trail route. Pairs that would
+require off-trail/glacier travel (no mapped route, or only an absurd valley-road detour) keep
+empty hiking columns -- the app only routes over them when the user opts into beeline distance,
+rather than silently mixing the two.
 
 Usage:
     python build_hiking_distances.py
@@ -52,6 +51,9 @@ HIKING_HIGHWAY_TAGS = [
 ]
 
 EARTH_RADIUS_M = 6_371_000
+# candidate hut pairs are those within this straight-line distance (good hikers can cover up to
+# ~30km/day, so 20km beeline leaves good margin for the actual trail distance to still be hikeable)
+MAX_BEELINE_DISTANCE_M = 20_000
 # snap distances larger than this indicate the hut is far from any mapped trail (bad geocode etc.)
 MAX_SNAP_DISTANCE_M = 2000
 # some hut pairs are only reachable via glacier/off-trail terrain with no mapped path between them;
@@ -178,6 +180,17 @@ def _haversine_m(lat1: np.ndarray, lon1: np.ndarray, lat2: np.ndarray, lon2: np.
     return 2 * EARTH_RADIUS_M * np.arcsin(np.sqrt(a))
 
 
+def compute_beeline_pairs(huts: gpd.GeoDataFrame, max_distance: float = MAX_BEELINE_DISTANCE_M) -> pd.DataFrame:
+    """All ordered hut pairs within max_distance (haversine meters) of each other."""
+    huts = huts.dropna(subset=["latitude", "longitude"])
+    lat, lon, ids = huts["latitude"].to_numpy(), huts["longitude"].to_numpy(), huts["id"].to_numpy()
+    dist = _haversine_m(lat[:, None], lon[:, None], lat[None, :], lon[None, :])
+    src, tgt = np.nonzero((dist <= max_distance) & (dist > 0))
+    return pd.DataFrame(
+        {"id_source": ids[src], "id_target": ids[tgt], "beeline_distance_m": dist[src, tgt].astype(int)}
+    )
+
+
 def _cumulative_ascent_descent(elevations: list[float], threshold: float) -> tuple[float, float]:
     """Sum ascent/descent with a noise threshold (hysteresis), ignoring swings smaller than it.
 
@@ -245,7 +258,7 @@ def compute_hiking_distances(
         target_ids = [t for t in targets["id_target"] if t in valid_hut_ids]
         if source_id not in valid_hut_ids or not target_ids:
             continue
-        beeline_by_target = dict(zip(targets["id_target"], targets["distance"]))
+        beeline_by_target = dict(zip(targets["id_target"], targets["beeline_distance_m"]))
 
         source_node = int(hut_to_node.loc[source_id, "node_index"])
         source_snap = hut_to_node.loc[source_id, "snap_distance_m"]
@@ -300,7 +313,7 @@ def compute_hiking_distances(
 def main():
     """Compute and save hiking-trail distances for all feasible hut pairs."""
     huts = gpd.read_file(os.path.join(DATA_PATH, "huts_database.geojson"))
-    feasible_connections = pd.read_csv(os.path.join(DATA_PATH, "feasible_connections.csv"))
+    feasible_connections = compute_beeline_pairs(huts)
 
     pbf_path = download_osm_extract()
     hiking_ways_path = filter_to_hiking_ways(pbf_path)
@@ -314,13 +327,14 @@ def main():
     print(f"Computing hiking distances for {len(feasible_connections)} feasible pairs...")
     hiking_distances = compute_hiking_distances(feasible_connections, hut_to_node, graph, graph_nodes, elevation_data)
 
-    # inner join: pairs with no viable trail route (or an implausible detour) are dropped
-    # entirely rather than falling back to beeline -- see build_hiking_distances.py docstring
-    merged = feasible_connections.merge(hiking_distances, on=["id_source", "id_target"], how="inner")
-    print(f"Resolved {len(merged)} / {len(feasible_connections)} pairs with a viable trail route")
+    # pairs with no viable trail route keep empty hiking columns rather than a beeline fallback
+    merged = feasible_connections.merge(hiking_distances, on=["id_source", "id_target"], how="left")
+    hiking_cols = ["hiking_distance_m", "ascent_m", "descent_m"]
+    merged[hiking_cols] = merged[hiking_cols].astype("Int64")
+    print(f"Resolved {merged['hiking_distance_m'].notna().sum()} / {len(merged)} pairs with a viable trail route")
 
     out_path = os.path.join(DATA_PATH, "hiking_distances.csv")
-    merged.rename(columns={"distance": "beeline_distance_m"}).to_csv(out_path, index=False)
+    merged.to_csv(out_path, index=False)
     print(f"Saved {out_path}")
 
 

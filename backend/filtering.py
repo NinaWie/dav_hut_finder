@@ -11,20 +11,21 @@ from haversine import haversine
 DATE_FORMAT_IN, DATE_FORMAT_OUT = "%Y-%m-%d", "%d.%m.%Y"
 
 HIKING_DISTANCES_PATH = os.path.join("data", "hiking_distances.csv")
-FEASIBLE_CONNECTIONS_PATH = os.path.join("data", "feasible_connections.csv")
 
-# beeline (straight-line) distance between huts, for every pair within max_distance
-FEASIBLE_CONNECTIONS_BEELINE = pd.read_csv(FEASIBLE_CONNECTIONS_PATH, index_col="id_source")
+_CONNECTIONS = pd.read_csv(HIKING_DISTANCES_PATH, index_col="id_source")
 
-# real hiking-trail distance (build_hiking_distances.py); only contains pairs that have an
-# actual, plausible trail route -- pairs that would require off-trail/glacier travel are
-# intentionally absent, not filled in with beeline distance (see build_hiking_distances.py)
-if os.path.exists(HIKING_DISTANCES_PATH):
-    FEASIBLE_CONNECTIONS_HIKING = pd.read_csv(HIKING_DISTANCES_PATH, index_col="id_source").rename(
-        columns={"hiking_distance_m": "distance"}
-    )
-else:
-    FEASIBLE_CONNECTIONS_HIKING = None
+# beeline (straight-line) distance for every hut pair within the build script's cutoff
+FEASIBLE_CONNECTIONS_BEELINE = _CONNECTIONS[["id_target", "beeline_distance_m"]].rename(
+    columns={"beeline_distance_m": "distance"}
+)
+
+# hiking-trail distance only for pairs with a plausible trail route; off-trail/glacier pairs have
+# empty hiking columns and are intentionally not filled with beeline (see build_hiking_distances.py)
+FEASIBLE_CONNECTIONS_HIKING = (
+    _CONNECTIONS.dropna(subset=["hiking_distance_m"])
+    .drop(columns="beeline_distance_m")
+    .rename(columns={"hiking_distance_m": "distance"})
+)
 
 
 def filter_huts(
@@ -112,16 +113,15 @@ def multi_day_route_finding(
     """Find all possible combinations of huts for multiple days.
 
     Args:
-        use_beeline_distance: if True (or if hiking-trail distances haven't been computed),
-            route using straight-line distance between huts, which allows pairs that would
-            require off-trail/glacier travel. If False, only use hut pairs that have an actual
-            plausible hiking-trail connection (see build_hiking_distances.py).
+        use_beeline_distance: if True, route using straight-line distance between huts, which
+            allows pairs that would require off-trail/glacier travel. If False, only use hut pairs
+            that have an actual plausible hiking-trail connection (see build_hiking_distances.py).
         min_ascent: minimum climb (meters) allowed between two consecutive huts. Only applies
             when hiking-trail data (with ascent_m) is being used.
         max_ascent: maximum climb (meters) allowed between two consecutive huts. Only applies
             when hiking-trail data (with ascent_m) is being used.
     """
-    if use_beeline_distance or FEASIBLE_CONNECTIONS_HIKING is None:
+    if use_beeline_distance:
         base_connections = FEASIBLE_CONNECTIONS_BEELINE
     else:
         base_connections = FEASIBLE_CONNECTIONS_HIKING

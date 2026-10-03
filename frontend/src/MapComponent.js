@@ -60,6 +60,16 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
     lng: 10.72265625,
   });
 
+  // Track which route is currently hovered
+  const [hoveredRouteIndex, setHoveredRouteIndex] = useState(null);
+
+  // Determine route color based on hover state
+  const getRouteColor = (routeIndex) => {
+    if (hoveredRouteIndex === null) return 'purple';  // No hover - all purple
+    if (routeIndex === hoveredRouteIndex) return 'black';  // Hovered route - black
+    return '#cccccc';  // Other routes - light grey
+  };
+
   return (
     <MapContainer center={[46.5, 10.5]} zoom={8} style={{ height: '100%', width: '100%' }}>
       <TileLayer
@@ -128,20 +138,18 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
         <Polyline
           key={index}
           positions={route.coordinates}
-          color="purple"
+          color={getRouteColor(index)}
           weight={5}
           opacity={0.5}
           eventHandlers={{
             mouseover: (e) => {
-              const layer = e.target;
-              layer.setStyle({ color: 'orange' });
+              setHoveredRouteIndex(index);
               const ascentLine = route.ascent ? `<br/>Ascent/Descent: ${route.ascent}` : '';
-              layer.bindPopup(`<b>${route.infos}</b><br/>Distance: ${route.distance}${ascentLine}`).openPopup();
+              e.target.bindPopup(`<b>${route.infos}</b><br/>Distance: ${route.distance}${ascentLine}`).openPopup();
             },
             mouseout: (e) => {
-              const layer = e.target;
-              layer.setStyle({ color: 'purple' });
-              layer.closePopup();
+              setHoveredRouteIndex(null);
+              e.target.closePopup();
             },
           }}
         />
