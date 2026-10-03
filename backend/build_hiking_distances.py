@@ -1,4 +1,5 @@
-"""One-time script to compute real hiking-trail distances between huts.
+"""
+One-time script to compute real hiking-trail distances between huts.
 
 Produces data/hiking_distances.csv: every hut pair within MAX_BEELINE_DISTANCE_M (haversine)
 with its beeline distance, plus hiking-trail distance and cumulative ascent/descent (meters, from
@@ -102,7 +103,8 @@ def download_osm_extract(url: str = OSM_EXTRACT_URL, out_path: str = OSM_EXTRACT
 
 
 def filter_to_hiking_ways(pbf_path: str, out_path: str = HIKING_WAYS_PATH) -> str:
-    """Pre-filter the (large) OSM extract down to trail-like ways using osmium-tool.
+    """
+    Pre-filter the (large) OSM extract down to trail-like ways using osmium-tool.
 
     pyrosm's default "walking" network also includes every residential/service street in
     every alpine town, which is both semantically wrong for hiking routing and far too large
@@ -115,14 +117,13 @@ def filter_to_hiking_ways(pbf_path: str, out_path: str = HIKING_WAYS_PATH) -> st
         return out_path
 
     tag_filter = "w/highway=" + ",".join(HIKING_HIGHWAY_TAGS)
-    subprocess.run(
-        ["osmium", "tags-filter", pbf_path, tag_filter, "-o", out_path], check=True
-    )
+    subprocess.run(["osmium", "tags-filter", pbf_path, tag_filter, "-o", out_path], check=True)
     return out_path
 
 
 def build_walking_graph(pbf_path: str):
-    """Parse the (already trail-filtered) network from the OSM extract into an igraph graph.
+    """
+    Parse the (already trail-filtered) network from the OSM extract into an igraph graph.
 
     Cached on disk (graph + node coordinates) since building it from the PBF takes several
     minutes and this script is often re-run while tuning the distance-computation logic below.
@@ -141,9 +142,7 @@ def build_walking_graph(pbf_path: str):
     edges = edges[["id", "u", "v", "length", "geometry"]].copy()
     graph = osm.to_graph(nodes, edges, graph_type="igraph", network_type="walking")
     # after export, node ordering can differ from `nodes`; graph.vs carries the authoritative set
-    graph_nodes = pd.DataFrame(
-        {"id": graph.vs["id"], "lat": graph.vs["lat"], "lon": graph.vs["lon"]}
-    )
+    graph_nodes = pd.DataFrame({"id": graph.vs["id"], "lat": graph.vs["lat"], "lon": graph.vs["lon"]})
 
     graph.write_pickle(GRAPH_CACHE_PATH)
     graph_nodes.to_csv(GRAPH_NODES_CACHE_PATH, index=False)
@@ -151,7 +150,8 @@ def build_walking_graph(pbf_path: str):
 
 
 def snap_huts_to_network(huts: gpd.GeoDataFrame, graph_nodes: pd.DataFrame) -> pd.DataFrame:
-    """Find the nearest walking-network node for each hut.
+    """
+    Find the nearest walking-network node for each hut.
 
     Returns:
         DataFrame indexed by hut id with columns node_index (position in graph), snap_distance_m
@@ -192,7 +192,8 @@ def compute_beeline_pairs(huts: gpd.GeoDataFrame, max_distance: float = MAX_BEEL
 
 
 def _cumulative_ascent_descent(elevations: list[float], threshold: float) -> tuple[float, float]:
-    """Sum ascent/descent with a noise threshold (hysteresis), ignoring swings smaller than it.
+    """
+    Sum ascent/descent with a noise threshold (hysteresis), ignoring swings smaller than it.
 
     Naively summing every up/down between noisy DEM samples hugely overcounts cumulative gain;
     this only counts a climb/descent once it has moved `threshold` meters away from the last
@@ -231,7 +232,7 @@ def compute_elevation_profile(
     sample_lon = np.interp(sample_dists, cum_dist, lon)
 
     elevations = [
-        elevation_data.get_elevation(float(la), float(lo)) for la, lo in zip(sample_lat, sample_lon)
+        elevation_data.get_elevation(float(la), float(lo)) for la, lo in zip(sample_lat, sample_lon, strict=False)
     ]
     elevations = [e for e in elevations if e is not None]
     if len(elevations) < 2:
@@ -247,7 +248,8 @@ def compute_hiking_distances(
     graph_nodes: pd.DataFrame,
     elevation_data: srtm.data.GeoElevationData,
 ) -> pd.DataFrame:
-    """Compute network-based hiking distance and elevation gain/loss for every feasible pair.
+    """
+    Compute network-based hiking distance and elevation gain/loss for every feasible pair.
 
     Groups targets by source hut so we only run one Dijkstra search per distinct source node.
     """
@@ -260,7 +262,7 @@ def compute_hiking_distances(
         target_ids = [t for t in targets["id_target"] if t in valid_hut_ids]
         if source_id not in valid_hut_ids or not target_ids:
             continue
-        beeline_by_target = dict(zip(targets["id_target"], targets["beeline_distance_m"]))
+        beeline_by_target = dict(zip(targets["id_target"], targets["beeline_distance_m"], strict=False))
 
         source_node = int(hut_to_node.loc[source_id, "node_index"])
         source_snap = hut_to_node.loc[source_id, "snap_distance_m"]
@@ -272,7 +274,7 @@ def compute_hiking_distances(
         target_nodes = [int(n) for n in hut_to_node.loc[target_ids, "node_index"]]
         unique_target_nodes = sorted(set(target_nodes))
         path_lengths = graph.distances(source=source_node, target=unique_target_nodes, weights="length")[0]
-        dist_by_node = dict(zip(unique_target_nodes, path_lengths))
+        dist_by_node = dict(zip(unique_target_nodes, path_lengths, strict=False))
 
         # filter to viable targets (distance/detour checks) before the expensive path + elevation
         # lookups below
@@ -292,7 +294,7 @@ def compute_hiking_distances(
 
         viable_target_nodes = sorted({int(hut_to_node.loc[t, "node_index"]) for t, _ in viable_targets})
         paths = graph.get_shortest_paths(source_node, to=viable_target_nodes, weights="length", output="vpath")
-        path_by_node = dict(zip(viable_target_nodes, paths))
+        path_by_node = dict(zip(viable_target_nodes, paths, strict=False))
 
         for target_id, hiking_distance in viable_targets:
             target_node = int(hut_to_node.loc[target_id, "node_index"])

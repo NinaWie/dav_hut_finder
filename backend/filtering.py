@@ -110,7 +110,8 @@ def multi_day_route_finding(
     min_ascent: int = 0,
     max_ascent: float = np.inf,
 ) -> pd.DataFrame:
-    """Find all possible combinations of huts for multiple days.
+    """
+    Find all possible combinations of huts for multiple days.
 
     Args:
         date_list: list of dates for the multi-day route.
@@ -173,9 +174,9 @@ def multi_day_route_finding(
             trip_options = options_to_next_day.merge(trip_options, left_on=f"day{i}", right_on=f"day{i}", how="inner")
 
         # rename columns
-        rename_map = {"id_target": f"day{i+1}", "distance": f"distance_day{i+1}"}
-        col_names.append(f"distance_day{i+1}")
-        for col, new_col in [("ascent_m", f"ascent_day{i+1}"), ("descent_m", f"descent_day{i+1}")]:
+        rename_map = {"id_target": f"day{i + 1}", "distance": f"distance_day{i + 1}"}
+        col_names.append(f"distance_day{i + 1}")
+        for col, new_col in [("ascent_m", f"ascent_day{i + 1}"), ("descent_m", f"descent_day{i + 1}")]:
             if col in trip_options.columns:
                 rename_map[col] = new_col
                 col_names.append(new_col)
