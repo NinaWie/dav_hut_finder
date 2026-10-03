@@ -69,23 +69,18 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
   }, [routes]);
 
   const handleRouteMouseOver = (index) => {
-    // Set hovered route to black (thicker), others to grey
-    polylineRefs.current.forEach((ref, i) => {
-      if (ref) {
-        if (i === index) {
-          ref.setStyle({ color: 'black', weight: 7 });
-        } else {
-          ref.setStyle({ color: '#cccccc', weight: 5 });
-        }
-      }
-    });
+    // Bring this route to the front and make it thicker
+    if (polylineRefs.current[index]) {
+      polylineRefs.current[index].bringToFront();
+      polylineRefs.current[index].setStyle({ weight: 8 });
+    }
   };
 
   const handleRouteMouseOut = () => {
-    // Reset all to black
+    // Reset all to normal weight
     polylineRefs.current.forEach((ref) => {
       if (ref) {
-        ref.setStyle({ color: 'black', weight: 5 });
+        ref.setStyle({ weight: 5 });
       }
     });
   };
