@@ -113,6 +113,12 @@ def multi_day_route_finding(
     """Find all possible combinations of huts for multiple days.
 
     Args:
+        date_list: list of dates for the multi-day route.
+        avail_per_date: DataFrame with hut availability per date.
+        id_to_hut: mapping from hut ID to hut data.
+        require_unique_huts: if True, each hut can only appear once in a route.
+        min_dist_between_huts: minimum distance (km) between consecutive huts.
+        max_dist_between_huts: maximum distance (km) between consecutive huts.
         use_beeline_distance: if True, route using straight-line distance between huts, which
             allows pairs that would require off-trail/glacier travel. If False, only use hut pairs
             that have an actual plausible hiking-trail connection (see build_hiking_distances.py).
@@ -121,10 +127,7 @@ def multi_day_route_finding(
         max_ascent: maximum climb (meters) allowed between two consecutive huts. Only applies
             when hiking-trail data (with ascent_m) is being used.
     """
-    if use_beeline_distance:
-        base_connections = FEASIBLE_CONNECTIONS_BEELINE
-    else:
-        base_connections = FEASIBLE_CONNECTIONS_HIKING
+    base_connections = FEASIBLE_CONNECTIONS_BEELINE if use_beeline_distance else FEASIBLE_CONNECTIONS_HIKING
 
     # filter feasible connections by the ones that are short enough
     if max_dist_between_huts > 0:

@@ -212,7 +212,7 @@ def _cumulative_ascent_descent(elevations: list[float], threshold: float) -> tup
 
 
 def compute_elevation_profile(
-    path_vertices: list[int], node_lat: np.ndarray, node_lon: np.ndarray, elevation_data
+    path_vertices: list[int], node_lat: np.ndarray, node_lon: np.ndarray, elevation_data: srtm.data.GeoElevationData
 ) -> tuple[float, float]:
     """Compute cumulative ascent/descent (meters) along a path using SRTM elevation data."""
     lat, lon = node_lat[path_vertices], node_lon[path_vertices]
@@ -230,7 +230,9 @@ def compute_elevation_profile(
     sample_lat = np.interp(sample_dists, cum_dist, lat)
     sample_lon = np.interp(sample_dists, cum_dist, lon)
 
-    elevations = [elevation_data.get_elevation(float(la), float(lo)) for la, lo in zip(sample_lat, sample_lon)]
+    elevations = [
+        elevation_data.get_elevation(float(la), float(lo)) for la, lo in zip(sample_lat, sample_lon)
+    ]
     elevations = [e for e in elevations if e is not None]
     if len(elevations) < 2:
         return 0.0, 0.0
@@ -241,9 +243,9 @@ def compute_elevation_profile(
 def compute_hiking_distances(
     feasible_connections: pd.DataFrame,
     hut_to_node: pd.DataFrame,
-    graph,
+    graph: igraph.Graph,
     graph_nodes: pd.DataFrame,
-    elevation_data,
+    elevation_data: srtm.data.GeoElevationData,
 ) -> pd.DataFrame:
     """Compute network-based hiking distance and elevation gain/loss for every feasible pair.
 
