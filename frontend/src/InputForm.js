@@ -12,11 +12,11 @@ import {
   useTheme
 } from '@mui/material';
 import './InputForm.css';
-import { ExpandLess, ExpandMore } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, Info as InfoIcon } from '@mui/icons-material';
 import { Collapse, FormControlLabel, Checkbox, Tooltip } from '@mui/material';
 
 
-const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) => {
+const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange, routes = [], downloadRoutesAsCSV, onOpenInfo }) => {
   const [localFormData, setLocalFormData] = useState(formData);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -257,7 +257,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                     />
                   </Tooltip>
                 </Box>
-                <Box textAlign="center">
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
                   <Button
                     type="submit"
                     value="multiDay"
@@ -268,6 +268,26 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                   >
                     Find Multi-Day Options
                   </Button>
+                  {routes.length > 0 && (
+                    <Button 
+                      variant="contained" 
+                      color="success"
+                      onClick={downloadRoutesAsCSV}
+                      size="small"
+                    >
+                      Download CSV
+                    </Button>
+                  )}
+                  <Tooltip title="Information about calculation methods">
+                    <Button
+                      variant="outlined"
+                      onClick={onOpenInfo}
+                      size="small"
+                      sx={{ minWidth: '40px', padding: '8px' }}
+                    >
+                      <InfoIcon fontSize="small" />
+                    </Button>
+                  </Tooltip>
                 </Box>
               </Box>
               <Box flex={1}>

@@ -144,14 +144,62 @@ function App() {
   const downloadRoutesAsCSV = () => {
     if (!routes || routes.length === 0) return;
 
-    // Create CSV header
-    const headers = ['Route #', 'Huts', 'Distance', 'Ascent/Descent'];
-    const rows = routes.map((route, index) => [
-      index + 1,
-      route.infos,
-      route.distance,
-      route.ascent || 'N/A'
-    ]);
+    // Determine number of days from first route
+    const numDays = routes[0].coordinates.length;
+    const numSegments = numDays - 1;
+
+    // Create dynamic headers
+    const headers = ['Route #', 'Huts'];
+    for (let i = 1; i <= numSegments; i++) {
+      headers.push(`Day ${i} Distance`);
+      headers.push(`Day ${i} Ascent`);
+      headers.push(`Day ${i} Descent`);
+    }
+    headers.push('Total Distance', 'Total Ascent');
+
+    // Parse and process rows
+    const rows = routes.map((route, index) => {
+      const row = [index + 1, route.infos];
+
+      // Parse distance values
+      const distances = (route.distance || '')
+        .split(',')
+        .map(d => {
+          const match = d.match(/[\d.]+/);
+          return match ? parseFloat(match[0]) : 0;
+        });
+
+      // Parse ascent/descent values
+      let ascents = [];
+      let descents = [];
+      if (route.ascent) {
+        const ascentSegments = route.ascent.split(',');
+        ascentSegments.forEach(segment => {
+          const ascentMatch = segment.match(/\+(\d+)/);
+          const descentMatch = segment.match(/-(\d+)/);
+          ascents.push(ascentMatch ? parseInt(ascentMatch[1]) : 0);
+          descents.push(descentMatch ? parseInt(descentMatch[1]) : 0);
+        });
+      } else {
+        ascents = Array(numSegments).fill('N/A');
+        descents = Array(numSegments).fill('N/A');
+      }
+
+      // Add per-day columns
+      for (let i = 0; i < numSegments; i++) {
+        row.push(distances[i] !== undefined ? distances[i] + ' km' : 'N/A');
+        row.push(ascents[i] !== undefined && ascents[i] !== 'N/A' ? '+' + ascents[i] + 'm' : 'N/A');
+        row.push(descents[i] !== undefined && descents[i] !== 'N/A' ? '-' + descents[i] + 'm' : 'N/A');
+      }
+
+      // Add totals
+      const totalDistance = distances.reduce((sum, d) => sum + (d || 0), 0);
+      const totalAscent = ascents.reduce((sum, a) => sum + (typeof a === 'number' ? a : 0), 0);
+      row.push(totalDistance.toFixed(2) + ' km');
+      row.push(totalAscent > 0 ? '+' + totalAscent + 'm' : 'N/A');
+
+      return row;
+    });
 
     // Combine headers and rows
     const csvContent = [
@@ -183,26 +231,10 @@ function App() {
           loading={loading}
           tabIndex={tabIndex}
           handleTabChange={handleTabChange}
+          routes={routes}
+          downloadRoutesAsCSV={downloadRoutesAsCSV}
+          onOpenInfo={() => setOpenInfoDialog(true)}
         />
-        {routes.length > 0 && tabIndex === 1 && (
-          <Box sx={{ p: 2, textAlign: 'center', display: 'flex', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
-            <Button 
-              variant="contained" 
-              color="success"
-              onClick={downloadRoutesAsCSV}
-            >
-              Download Routes as CSV
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<InfoIcon />}
-              onClick={() => setOpenInfoDialog(true)}
-              size="small"
-            >
-              Info
-            </Button>
-          </Box>
-        )}
         <Box flex={1} display="flex">
           <MapComponent setCoordinates={setCoordinates} markers={markers} routes={routes} handleMapClick={handleMapClick} minSpaces={formData.minSpaces} radiusKm={Number(formData.maxDistance)}/>
         </Box>
