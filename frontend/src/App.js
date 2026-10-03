@@ -38,8 +38,8 @@ function App() {
     minSpaces: '1',
     startDate: defaultDates.startDate,
     endDate: defaultDates.endDate,
-    minHutDistance: 0,
-    maxHutDistance: 13,
+    minHutDistance: 5,
+    maxHutDistance: 20,
     useBeelineDistance: false,
     minAscent: 0,
     maxAscent: 3000

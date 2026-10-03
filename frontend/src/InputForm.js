@@ -268,16 +268,6 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange, rou
                   >
                     Find Multi-Day Options
                   </Button>
-                  {routes.length > 0 && (
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={downloadRoutesAsCSV}
-                      size="small"
-                    >
-                      Download CSV
-                    </Button>
-                  )}
                   <Tooltip title="Information about calculation methods">
                     <Button
                       variant="outlined"
@@ -342,6 +332,16 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange, rou
                     />
                   </>
                 )}
+                {routes.length > 0 && (
+                    <Button
+                      variant="contained"
+                      color="success"
+                      onClick={downloadRoutesAsCSV}
+                      size="small"
+                    >
+                      Download CSV
+                    </Button>
+                  )}
               </Box>
             </Box>
           </Box>
