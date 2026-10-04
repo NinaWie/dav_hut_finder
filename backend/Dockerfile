@@ -7,5 +7,5 @@ USER maeuschen
 WORKDIR $HOME
 COPY --chown=maeuschen:maeuschen pyproject.toml pyproject.toml
 
-RUN pip install --user --no-cache-dir e .
+RUN pip install --user --no-cache-dir -e .
 ENV PATH="$HOME/.local/bin:${PATH}"
