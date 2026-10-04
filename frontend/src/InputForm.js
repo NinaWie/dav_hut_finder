@@ -12,11 +12,11 @@ import {
   useTheme
 } from '@mui/material';
 import './InputForm.css';
-import { ExpandLess, ExpandMore } from '@mui/icons-material';
-import { Collapse } from '@mui/material';
+import { ExpandLess, ExpandMore, Info as InfoIcon } from '@mui/icons-material';
+import { Collapse, FormControlLabel, Checkbox, Tooltip } from '@mui/material';
 
 
-const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) => {
+const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange, routes = [], downloadRoutesAsCSV, onOpenInfo }) => {
   const [localFormData, setLocalFormData] = useState(formData);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -43,12 +43,25 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
     setLocalFormData(prev => ({
       ...prev,
       ...(name === 'distanceRange' ? { minDistance: min, maxDistance: max } : {}),
-      ...(name === 'altitudeRange' ? { minAltitude: min, maxAltitude: max } : {})
+      ...(name === 'altitudeRange' ? { minAltitude: min, maxAltitude: max } : {}),
+      ...(name === 'hutDistanceRange' ? { minHutDistance: min, maxHutDistance: max } : {}),
+      ...(name === 'ascentRange' ? { minAscent: min, maxAscent: max } : {})
     }));
   };
 
-  const handleSingleSliderChange = (_, newValue, name) => {
-    setLocalFormData(prev => ({ ...prev, [name]: newValue }));
+  const maxHutDistanceLimit = localFormData.useBeelineDistance ? 20 : 40;
+
+  const handleCheckboxChange = (e) => {
+    const { name, checked } = e.target;
+    setLocalFormData(prev => {
+      const next = { ...prev, [name]: checked };
+      if (name === 'useBeelineDistance') {
+        const limit = checked ? 20 : 40;
+        next.minHutDistance = Math.min(Number(prev.minHutDistance), limit);
+        next.maxHutDistance = Math.min(Number(prev.maxHutDistance), limit);
+      }
+      return next;
+    });
   };
 
   const handleSubmit = (e) => {
@@ -131,7 +144,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
           <Box width="100%" display="flex" justifyContent="center" p={isMobile ? 1 : 2}>
             <Box width="100%" maxWidth={isMobile ? '90%' : 600}>
               <Typography gutterBottom align="center">
-                Distance: {localFormData.minDistance} km - {localFormData.maxDistance} km
+                Distance from position: {localFormData.minDistance} km - {localFormData.maxDistance} km
               </Typography>
               <Slider
                 value={[parseFloat(localFormData.minDistance) || 0, parseFloat(localFormData.maxDistance) || 250]}
@@ -141,7 +154,7 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
                 max={500}
               />
               <Typography gutterBottom align="center">
-                Altitude: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
+                Hut altitude: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
               </Typography>
               <Slider
                 value={[parseFloat(localFormData.minAltitude) || 0, parseFloat(localFormData.maxAltitude) || 4000]}
@@ -190,91 +203,145 @@ const InputForm = ({ formData, onSubmit, loading, tabIndex, handleTabChange}) =>
         {/* Multi-Day Tab */}
         {tabIndex === 1 && (
           <Box width="100%" display="flex" justifyContent="center" p={isMobile ? 1 : 2}>
-            <Box width="100%" maxWidth={isMobile ? '90%' : 600}>
-              <Typography gutterBottom align="center">
-                Distance: {localFormData.minDistance} km - {localFormData.maxDistance} km
-              </Typography>
-              <Slider
-                value={[parseFloat(localFormData.minDistance) || 0, parseFloat(localFormData.maxDistance) || 250]}
-                onChange={(e, v) => handleSliderChange(e, v, 'distanceRange')}
-                valueLabelDisplay="auto"
-                min={0}
-                max={500}
-              />
-              <Typography gutterBottom align="center">
-                Altitude: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
-              </Typography>
-              <Slider
-                value={[parseFloat(localFormData.minAltitude) || 0, parseFloat(localFormData.maxAltitude) || 4000]}
-                onChange={(e, v) => handleSliderChange(e, v, 'altitudeRange')}
-                valueLabelDisplay="auto"
-                min={0}
-                max={4000}
-                step={10}
-              />
-              <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2} mt={2}>
-                <Box flex={1}>
-                  <TextField
-                    fullWidth
-                    label="Start Date"
-                    type="date"
-                    name="startDate"
-                    value={localFormData.startDate}
-                    onChange={handleChange}
-                    InputLabelProps={{ shrink: true }}
-                    size="small"
-                  />
-                  <Box mt={2}>
-                    <TextField
-                      fullWidth
-                      label="End Date"
-                      type="date"
-                      name="endDate"
-                      value={localFormData.endDate}
-                      onChange={handleChange}
-                      InputLabelProps={{ shrink: true }}
-                      size="small"
-                      error={showError}
-                      helperText={showError ? "Start date must be before end date" : ""}
+            <Box
+              width="100%"
+              maxWidth={isMobile ? '90%' : 900}
+              display="flex"
+              flexDirection={{ xs: 'column', sm: 'row' }}
+              gap={isMobile ? 1 : 4}
+            >
+              <Box flex={1} display="flex" flexDirection="column" gap={2}>
+                <TextField
+                  fullWidth
+                  label="Start Date"
+                  type="date"
+                  name="startDate"
+                  value={localFormData.startDate}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                />
+                <TextField
+                  fullWidth
+                  label="End Date"
+                  type="date"
+                  name="endDate"
+                  value={localFormData.endDate}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  error={showError}
+                  helperText={showError ? "Start date must be before end date" : ""}
+                />
+                <TextField
+                  fullWidth
+                  label="Minimal Spaces"
+                  type="number"
+                  name="minSpaces"
+                  value={localFormData.minSpaces}
+                  onChange={handleChange}
+                  size="small"
+                />
+                <Box textAlign="center">
+                  <Tooltip title="Off by default: routes only use pairs of huts with an actual mapped hiking trail between them. Tick this to allow straight-line (beeline) distance instead, e.g. for routes crossing a glacier with no marked trail.">
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          name="useBeelineDistance"
+                          checked={Boolean(localFormData.useBeelineDistance)}
+                          onChange={handleCheckboxChange}
+                          size="small"
+                        />
+                      }
+                      label="Use beeline distance"
                     />
-                  </Box>
+                  </Tooltip>
                 </Box>
-                <Box flex={1}>
-                  <TextField
-                    fullWidth
-                    label="Minimal Spaces"
-                    type="number"
-                    name="minSpaces"
-                    value={localFormData.minSpaces}
-                    onChange={handleChange}
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', flexWrap: 'nowrap' }}>
+                  <Button
+                    type="submit"
+                    value="multiDay"
+                    variant="contained"
+                    disabled={!isDateRangeValid() || loading}
+                    startIcon={loading ? <CircularProgress size={isMobile ? 16 : 20} /> : null}
                     size="small"
-                  />
-                  <Box mt={4}>
-                    <Typography gutterBottom align="center">
-                      Max distance between huts: {localFormData.maxHutDistance} km
-                    </Typography>
-                    <Slider
-                      value={parseFloat(localFormData.maxHutDistance) || 13}
-                      onChange={(e, v) => handleSingleSliderChange(e, v, 'maxHutDistance')}
-                      valueLabelDisplay="auto"
-                      min={0}
-                      max={13}
-                      step={1}
-                    />
-                  </Box>
+                  >
+                    Find Multi-Day Options
+                  </Button>
+                  <Tooltip title="Information about calculation methods">
+                    <Button
+                      variant="outlined"
+                      onClick={onOpenInfo}
+                      size="small"
+                      sx={{ minWidth: '40px', padding: '8px' }}
+                    >
+                      <InfoIcon fontSize="small" />
+                    </Button>
+                  </Tooltip>
                 </Box>
               </Box>
-              <Box textAlign="center" mt={2}>
-                <Button
-                  type="submit"
-                  value="multiDay"
-                  variant="contained"
-                  disabled={!isDateRangeValid() || loading}
-                  startIcon={loading ? <CircularProgress size={isMobile ? 16 : 20} /> : null}
+              <Box flex={1}>
+                <Typography align="center" variant="body2">
+                  Distance from position: {localFormData.minDistance} km - {localFormData.maxDistance} km
+                </Typography>
+                <Slider
+                  value={[parseFloat(localFormData.minDistance) || 0, parseFloat(localFormData.maxDistance) || 250]}
+                  onChange={(e, v) => handleSliderChange(e, v, 'distanceRange')}
+                  valueLabelDisplay="auto"
                   size="small"
-                >
-                  Find Multi-Day Options
-                </Button>
+                  min={0}
+                  max={500}
+                />
+                <Typography align="center" variant="body2">
+                  Hut altitude: {localFormData.minAltitude} m - {localFormData.maxAltitude} m
+                </Typography>
+                <Slider
+                  value={[parseFloat(localFormData.minAltitude) || 0, parseFloat(localFormData.maxAltitude) || 4000]}
+                  onChange={(e, v) => handleSliderChange(e, v, 'altitudeRange')}
+                  valueLabelDisplay="auto"
+                  size="small"
+                  min={0}
+                  max={4000}
+                  step={10}
+                />
+                <Typography align="center" variant="body2">
+                  Distance between huts: {localFormData.minHutDistance} km - {localFormData.maxHutDistance} km
+                </Typography>
+                <Slider
+                  value={[Number(localFormData.minHutDistance), Number(localFormData.maxHutDistance)]}
+                  onChange={(e, v) => handleSliderChange(e, v, 'hutDistanceRange')}
+                  valueLabelDisplay="auto"
+                  size="small"
+                  min={0}
+                  max={maxHutDistanceLimit}
+                  step={1}
+                />
+                {!localFormData.useBeelineDistance && (
+                  <>
+                    <Typography align="center" variant="body2">
+                      Ascent between huts: {localFormData.minAscent} m - {localFormData.maxAscent} m
+                    </Typography>
+                    <Slider
+                      value={[localFormData.minAscent, localFormData.maxAscent]}
+                      onChange={(e, v) => handleSliderChange(e, v, 'ascentRange')}
+                      valueLabelDisplay="auto"
+                      size="small"
+                      min={0}
+                      max={3000}
+                      step={50}
+                    />
+                  </>
+                )}
+                {routes.length > 0 && (
+                    <Button
+                      variant="contained"
+                      color="success"
+                      onClick={downloadRoutesAsCSV}
+                      size="small"
+                    >
+                      Download CSV
+                    </Button>
+                  )}
               </Box>
             </Box>
           </Box>

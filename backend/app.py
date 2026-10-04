@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Text
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import psycopg2
 import sqlalchemy
@@ -248,6 +249,7 @@ def submit():
 
     # just return filtered huts without availability check
     else:
+        filtered_huts = filtered_huts.fillna("-")
         if DEBUG:
             return render_template(
                 "simple.html", tables=[filtered_huts.to_html(classes="data")], titles=filtered_huts.columns.values
@@ -284,15 +286,50 @@ def multi_day_planning():
     avail_per_date = avail_per_date[avail_per_date.index.isin(filtered_hut_ids)]
 
     # compute trip options
+    min_dist_between_huts = float(data.get("minHutDistance", 0)) * 1000  # convert to meters
     max_dist_between_huts = float(data.get("maxHutDistance", -1)) * 1000  # convert to meters
+    use_beeline_distance = bool(data.get("useBeelineDistance", False))
+    min_ascent = float(data.get("minAscent", 0))
+    max_ascent = float(data.get("maxAscent", np.inf))
     trip_options = multi_day_route_finding(
-        date_list, avail_per_date, id_to_hut_name, max_dist_between_huts=max_dist_between_huts
+        date_list,
+        avail_per_date,
+        id_to_hut_name,
+        min_dist_between_huts=min_dist_between_huts,
+        max_dist_between_huts=max_dist_between_huts,
+        use_beeline_distance=use_beeline_distance,
+        min_ascent=min_ascent,
+        max_ascent=max_ascent,
     )
 
     all_ids_in_trip_options = set()
     for day in range(nr_days):
         all_ids_in_trip_options.update(trip_options[f"day{day}"].unique())
     filtered_huts = filtered_huts[filtered_huts["id"].isin(all_ids_in_trip_options)]
+
+    # For each hut, compute minimum availability across all days it appears in any route
+    # This accounts for huts appearing on different days in different routes
+    hut_min_availability = {}
+    for hut_id in all_ids_in_trip_options:
+        min_avail = np.inf
+        for day in range(nr_days):
+            # Find where this hut appears on this day
+            day_col = f"day{day}"
+            places_col = f"places_day{day}"
+            mask = trip_options[day_col] == hut_id
+            if mask.any():
+                # Get minimum availability for this hut on this day across all matching routes
+                day_avail = trip_options.loc[mask, places_col].min()
+                min_avail = min(min_avail, day_avail)
+
+        hut_min_availability[hut_id] = min_avail if min_avail != np.inf else -1
+
+    # Add minimum availability to filtered huts
+    filtered_huts["places_avail"] = filtered_huts["id"].map(hut_min_availability).fillna(-1)
+    filtered_huts["link"] = filtered_huts["id"].apply(
+        lambda x: f"https://www.hut-reservation.org/reservation/book-hut/{x}/wizard"
+    )
+    filtered_huts["verein"] = filtered_huts["verein"].fillna("-")
 
     # convert to dicts
     huts_with_id = huts.set_index("id")
@@ -308,8 +345,15 @@ def multi_day_planning():
             [row[f"name_day{k}"] + " (" + str(int(row[f"places_day{k}"])) + " spots)" for k in range(nr_days)]
         )
         dist = ", ".join([str(round(row[f"distance_day{k}"] / 1000, 2)) + " km" for k in range(1, nr_days)])
-        json_dicts.append({"infos": infos, "coordinates": coordinates, "distance": dist})
+        if "ascent_day1" in row:
+            ascent = ", ".join(
+                [f"+{int(row[f'ascent_day{k}'])}m/-{int(row[f'descent_day{k}'])}m" for k in range(1, nr_days)]
+            )
+        else:
+            ascent = None
+        json_dicts.append({"infos": infos, "coordinates": coordinates, "distance": dist, "ascent": ascent})
 
+    filtered_huts = filtered_huts.fillna("-")
     return json_response({"status": "success", "routes": json_dicts, "markers": table_to_dict(filtered_huts)})
 
 

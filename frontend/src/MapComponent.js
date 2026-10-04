@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -59,6 +59,31 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
     lat: 47.170598236405986,
     lng: 10.72265625,
   });
+
+  // Store refs to all polylines so we can update their styles
+  const polylineRefs = useRef([]);
+
+  // Clean up refs when routes change
+  useEffect(() => {
+    polylineRefs.current = [];
+  }, [routes]);
+
+  const handleRouteMouseOver = (index) => {
+    // Bring this route to the front and make it thicker
+    if (polylineRefs.current[index]) {
+      polylineRefs.current[index].bringToFront();
+      polylineRefs.current[index].setStyle({ weight: 13 });
+    }
+  };
+
+  const handleRouteMouseOut = () => {
+    // Reset all to normal weight
+    polylineRefs.current.forEach((ref) => {
+      if (ref) {
+        ref.setStyle({ weight: 5 });
+      }
+    });
+  };
 
   return (
     <MapContainer center={[46.5, 10.5]} zoom={8} style={{ height: '100%', width: '100%' }}>
@@ -128,19 +153,20 @@ const MapComponent = ({ markers, routes, handleMapClick, minSpaces, radiusKm }) 
         <Polyline
           key={index}
           positions={route.coordinates}
-          color="purple"
+          color="black"
           weight={5}
-          opacity={0.5}
+          opacity={1}
           eventHandlers={{
             mouseover: (e) => {
-              const layer = e.target;
-              layer.setStyle({ color: 'orange' });
-              layer.bindPopup(`<b>${route.infos}</b>`).openPopup();
+              // Store reference and update styles
+              polylineRefs.current[index] = e.target;
+              handleRouteMouseOver(index);
+              const ascentLine = route.ascent ? `<br/>Ascent/Descent: ${route.ascent}` : '';
+              e.target.bindPopup(`<b>${route.infos}</b><br/>Distance: ${route.distance}${ascentLine}`).openPopup();
             },
             mouseout: (e) => {
-              const layer = e.target;
-              layer.setStyle({ color: 'purple' });
-              layer.closePopup();
+              handleRouteMouseOut();
+              e.target.closePopup();
             },
           }}
         />

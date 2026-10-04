@@ -10,8 +10,22 @@ from haversine import haversine
 
 DATE_FORMAT_IN, DATE_FORMAT_OUT = "%Y-%m-%d", "%d.%m.%Y"
 
-# load feasible connections
-FEASIBLE_CONNECTIONS = pd.read_csv(os.path.join("data", "feasible_connections.csv"), index_col="id_source")
+HIKING_DISTANCES_PATH = os.path.join("data", "hiking_distances.csv")
+
+_CONNECTIONS = pd.read_csv(HIKING_DISTANCES_PATH, index_col="id_source")
+
+# beeline (straight-line) distance for every hut pair within the build script's cutoff
+FEASIBLE_CONNECTIONS_BEELINE = _CONNECTIONS[["id_target", "beeline_distance_m"]].rename(
+    columns={"beeline_distance_m": "distance"}
+)
+
+# hiking-trail distance only for pairs with a plausible trail route; off-trail/glacier pairs have
+# empty hiking columns and are intentionally not filled with beeline (see build_hiking_distances.py)
+FEASIBLE_CONNECTIONS_HIKING = (
+    _CONNECTIONS.dropna(subset=["hiking_distance_m"])
+    .drop(columns="beeline_distance_m")
+    .rename(columns={"hiking_distance_m": "distance"})
+)
 
 
 def filter_huts(
@@ -90,14 +104,45 @@ def multi_day_route_finding(
     avail_per_date: pd.DataFrame,
     id_to_hut: dict,
     require_unique_huts: bool = True,
+    min_dist_between_huts: float = 0,
     max_dist_between_huts: int = -1,
+    use_beeline_distance: bool = False,
+    min_ascent: int = 0,
+    max_ascent: float = np.inf,
 ) -> pd.DataFrame:
-    """Find all possible combinations of huts for multiple days."""
+    """
+    Find all possible combinations of huts for multiple days.
+
+    Args:
+        date_list: list of dates for the multi-day route.
+        avail_per_date: DataFrame with hut availability per date.
+        id_to_hut: mapping from hut ID to hut data.
+        require_unique_huts: if True, each hut can only appear once in a route.
+        min_dist_between_huts: minimum distance (km) between consecutive huts.
+        max_dist_between_huts: maximum distance (km) between consecutive huts.
+        use_beeline_distance: if True, route using straight-line distance between huts, which
+            allows pairs that would require off-trail/glacier travel. If False, only use hut pairs
+            that have an actual plausible hiking-trail connection (see build_hiking_distances.py).
+        min_ascent: minimum climb (meters) allowed between two consecutive huts. Only applies
+            when hiking-trail data (with ascent_m) is being used.
+        max_ascent: maximum climb (meters) allowed between two consecutive huts. Only applies
+            when hiking-trail data (with ascent_m) is being used.
+    """
+    base_connections = FEASIBLE_CONNECTIONS_BEELINE if use_beeline_distance else FEASIBLE_CONNECTIONS_HIKING
+
     # filter feasible connections by the ones that are short enough
     if max_dist_between_huts > 0:
-        feasible_connections = FEASIBLE_CONNECTIONS[FEASIBLE_CONNECTIONS["distance"] <= max_dist_between_huts]
+        feasible_connections = base_connections[base_connections["distance"] <= max_dist_between_huts]
     else:
-        feasible_connections = FEASIBLE_CONNECTIONS.copy()
+        feasible_connections = base_connections.copy()
+    if min_dist_between_huts > 0:
+        feasible_connections = feasible_connections[feasible_connections["distance"] >= min_dist_between_huts]
+
+    # ascent_m is only available for the hiking-trail dataset, not the beeline one
+    if "ascent_m" in feasible_connections.columns and (min_ascent > 0 or max_ascent < np.inf):
+        feasible_connections = feasible_connections[
+            (feasible_connections["ascent_m"] >= min_ascent) & (feasible_connections["ascent_m"] <= max_ascent)
+        ]
 
     col_names, trip_options = [], pd.DataFrame()
     for i, current_date in enumerate(date_list):
@@ -129,8 +174,13 @@ def multi_day_route_finding(
             trip_options = options_to_next_day.merge(trip_options, left_on=f"day{i}", right_on=f"day{i}", how="inner")
 
         # rename columns
-        trip_options.rename({"id_target": f"day{i+1}", "distance": f"distance_day{i+1}"}, axis=1, inplace=True)
-        col_names.append(f"distance_day{i+1}")
+        rename_map = {"id_target": f"day{i + 1}", "distance": f"distance_day{i + 1}"}
+        col_names.append(f"distance_day{i + 1}")
+        for col, new_col in [("ascent_m", f"ascent_day{i + 1}"), ("descent_m", f"descent_day{i + 1}")]:
+            if col in trip_options.columns:
+                rename_map[col] = new_col
+                col_names.append(new_col)
+        trip_options.rename(rename_map, axis=1, inplace=True)
         # print(f"Total options after day {i}: {len(trip_options)}")
     trip_options = trip_options[col_names]
 

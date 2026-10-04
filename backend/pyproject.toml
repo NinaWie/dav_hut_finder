@@ -16,19 +16,21 @@ classifiers = [
 ]
 
 dependencies = [
-    "numpy==2.0.0",
-    "geopandas==1.0.1",
-    "matplotlib==3.9.1",
-    "beautifulsoup4==4.12.3",
-    "requests==2.32.3",
-    "pyrosm==0.6.2",
-    "flask==3.0.3",
-    "flask-cors==4.0.1",
-    "haversine==2.8.1",
-    "selenium==4.22.0",
-    "waitress==3.0.2",
+    "numpy>=2.0.0",
+    "geopandas>=1.0.1",
+    "matplotlib>=3.9.1",
+    "beautifulsoup4>=4.12.3",
+    "requests>=2.32.3",
+    "pyrosm>=0.6.2",
+    "flask>=3.0.3",
+    "flask-cors>=4.0.1",
+    "haversine>=2.8.1",
+    "selenium>=4.22.0",
+    "waitress>=3.0.2",
     "psycopg2",
-    "sqlalchemy"
+    "sqlalchemy",
+    "aiohttp",
+    "slack-sdk>=3.39.0"
 ]
 
 [project.urls]
@@ -39,7 +41,13 @@ test = [
     "pytest"
 ]
 linting = [
-    "pre-commit==2.17.0"
+    "pre-commit>=2.17.0"
+]
+# only needed for the one-time build_hiking_distances script
+routing = [
+    "python-igraph",
+    "scikit-learn",
+    "srtm.py"
 ]
 
 [build-system]
